@@ -198,6 +198,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tabId  = ytTabs[0]?.id;
     if (!tabId) { alert('YouTube 탭을 열고 로그인 상태를 확인하세요.'); return; }
 
+    let spotifyTabId = null;
+    if (platform === 'spotify') {
+      const spTabs = await chrome.tabs.query({ url: PLATFORM_CONFIG.spotify.tabUrl });
+      spotifyTabId = spTabs[0]?.id;
+      if (!spotifyTabId) { alert(PLATFORM_CONFIG.spotify.tabMsg); return; }
+    }
+
     await chrome.storage.local.set({ inputState: { platform, sourceUrl, mode, playlistName, playlistUrl } });
 
     setJobActive(true);
@@ -208,7 +215,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setBar(0);
 
     chrome.runtime.sendMessage(
-      { type: 'START_JOB', payload: { platform, sourceUrl, mode, playlistName, playlistUrl, tabId } },
+      { type: 'START_JOB', payload: { platform, sourceUrl, spotifyTabId, mode, playlistName, playlistUrl, tabId } },
       (resp) => {
         if (resp?.error) { alert(resp.error); setJobActive(false); }
       }

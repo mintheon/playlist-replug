@@ -2,32 +2,42 @@ import { broadcastProgress } from './state.js';
 
 const PAGE_SIZE = 100;
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-const SPOTIFY_CLIENT_ID = 'd8a5ed958d274c2e8ee717e6a4b0971d';
 
-async function getAnonymousToken() {
-  const res = await fetch('https://clienttoken.spotify.com/v1/clienttoken', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({
-      client_data: {
-        client_version: '1.0.0',
-        client_id: SPOTIFY_CLIENT_ID,
-        js_sdk_data: { device_brand: 'Apple', device_model: 'macos', os: 'macos', os_version: '10.15.7' },
-      },
-    }),
-  });
-  const data = await res.json();
-  const token = data.granted_token?.token;
-  if (!token) throw new Error(`Spotify 토큰 발급 실패: ${JSON.stringify(data).slice(0, 120)}`);
-  return token;
+async function spotifyTokenFn() {
+  try {
+    const res = await fetch(
+      `https://open.spotify.com/get_access_token?reason=transport&productType=web_player&correlationId=${Date.now()}`,
+      { credentials: 'include', cache: 'no-store' }
+    );
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); }
+    catch { return { ok: false, error: `응답 오류: ${text.slice(0, 80)}` }; }
+    if (!data.accessToken || data.isAnonymous) return { ok: false, error: 'Spotify에 로그인되어 있는지 확인하세요.' };
+    return { ok: true, data: data.accessToken };
+  } catch (e) { return { ok: false, error: e.message }; }
 }
 
-export async function fetchSpotifySongs(playlistUrl, shouldStop) {
+async function getToken(spotifyTabId) {
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('토큰 요청 시간 초과')), 10000)
+  );
+  const exec = chrome.scripting.executeScript({
+    target: { tabId: spotifyTabId }, world: 'MAIN', func: spotifyTokenFn, args: [],
+  }).then(res => {
+    const r = res[0]?.result;
+    if (!r?.ok) throw new Error(r?.error || '토큰 획득 실패');
+    return r.data;
+  });
+  return Promise.race([exec, timeout]);
+}
+
+export async function fetchSpotifySongs(playlistUrl, spotifyTabId, shouldStop) {
   const playlistId = playlistUrl.match(/playlist\/([A-Za-z0-9]+)/)?.[1];
   if (!playlistId) throw new Error('올바른 Spotify 플레이리스트 URL을 입력해주세요.');
 
   broadcastProgress({ step: 'Spotify 토큰 가져오는 중...' });
-  const token   = await getAnonymousToken();
+  const token   = await getToken(spotifyTabId);
   const headers = { Authorization: `Bearer ${token}`, 'User-Agent': UA };
 
   broadcastProgress({ step: '플레이리스트 정보 로딩 중...' });
