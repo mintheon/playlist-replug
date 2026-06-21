@@ -22,7 +22,7 @@ export async function runJob({ platform, sourceUrl, mode, playlistName, playlist
   await flushState();
 
   const songs = platform === 'spotify'
-    ? await fetchSpotifySongs(sourceUrl, spotifyTabId, () => _stopRequested)
+    ? await fetchSpotifySongs(sourceUrl, () => _stopRequested)
     : await fetchMelonSongs(sourceUrl, () => _stopRequested);
 
   broadcastProgress({ log: `${songs.length}개 곡 가져옴`, logType: 'info' });
