@@ -1,40 +1,27 @@
 import { broadcastProgress } from './state.js';
 
 const PAGE_SIZE = 100;
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-function getToken(spotifyTabId) {
-  return new Promise((resolve, reject) => {
-    const tid = setTimeout(() => {
-      chrome.webRequest.onBeforeSendHeaders.removeListener(listener);
-      reject(new Error('토큰 요청 시간 초과 — Spotify에서 음악을 재생하거나 탭을 조작해보세요.'));
-    }, 15000);
-
-    function listener(details) {
-      const auth = details.requestHeaders?.find(
-        h => h.name.toLowerCase() === 'authorization'
-      )?.value;
-      if (auth?.startsWith('Bearer ')) {
-        clearTimeout(tid);
-        chrome.webRequest.onBeforeSendHeaders.removeListener(listener);
-        resolve(auth.slice(7));
-      }
-    }
-
-    chrome.webRequest.onBeforeSendHeaders.addListener(
-      listener,
-      { urls: ['https://api.spotify.com/*'], tabId: spotifyTabId },
-      ['requestHeaders']
-    );
+async function getPublicToken(playlistId) {
+  const res = await fetch(`https://open.spotify.com/playlist/${playlistId}`, {
+    headers: { 'User-Agent': UA },
   });
+  const html = await res.text();
+  const match = html.match(/<script[^>]+id="session"[^>]*>([^<]+)<\/script>/);
+  if (!match) throw new Error('Spotify 페이지에서 세션 정보를 찾지 못했습니다. 플레이리스트가 공개 상태인지 확인하세요.');
+  const session = JSON.parse(match[1]);
+  if (!session.accessToken) throw new Error('세션에서 토큰을 찾지 못했습니다.');
+  return session.accessToken;
 }
 
-export async function fetchSpotifySongs(playlistUrl, spotifyTabId, shouldStop) {
+export async function fetchSpotifySongs(playlistUrl, shouldStop) {
   const playlistId = playlistUrl.match(/playlist\/([A-Za-z0-9]+)/)?.[1];
   if (!playlistId) throw new Error('올바른 Spotify 플레이리스트 URL을 입력해주세요.');
 
-  broadcastProgress({ step: 'Spotify 토큰 가져오는 중... (Spotify 탭에서 음악을 재생하거나 탐색하세요)' });
-  const token   = await getToken(spotifyTabId);
-  const headers = { Authorization: `Bearer ${token}` };
+  broadcastProgress({ step: 'Spotify 토큰 가져오는 중...' });
+  const token   = await getPublicToken(playlistId);
+  const headers = { Authorization: `Bearer ${token}`, 'User-Agent': UA };
 
   broadcastProgress({ step: '플레이리스트 정보 로딩 중...' });
   const infoRes = await fetch(

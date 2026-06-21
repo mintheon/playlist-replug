@@ -15,14 +15,14 @@ export function requestStop() {
   _isJobRunning  = false;
 }
 
-export async function runJob({ platform, sourceUrl, spotifyTabId, mode, playlistName, playlistUrl, tabId }) {
+export async function runJob({ platform, sourceUrl, mode, playlistName, playlistUrl, tabId }) {
   _stopRequested = false;
   _isJobRunning  = true;
   initState({ running: true, bar: 0, logs: [], platform, sourceUrl, mode, playlistName, playlistUrl });
   await flushState();
 
   const songs = platform === 'spotify'
-    ? await fetchSpotifySongs(sourceUrl, spotifyTabId, () => _stopRequested)
+    ? await fetchSpotifySongs(sourceUrl, () => _stopRequested)
     : await fetchMelonSongs(sourceUrl, () => _stopRequested);
 
   broadcastProgress({ log: `${songs.length}개 곡 가져옴`, logType: 'info' });
