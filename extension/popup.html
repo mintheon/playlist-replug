@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #111;
+      --surface: #1c1c1c;
+      --border: #2a2a2a;
+      --accent: #22c55e;
+      --accent-dim: rgba(34,197,94,0.12);
+      --accent-hover: #16a34a;
+      --text: #f0f0f0;
+      --muted: #777;
+      --dim: #3d3d3d;
+      --ok: #4ade80;
+      --err: #f87171;
+      --info: #60a5fa;
+      --r: 8px;
+    }
+
+    body {
+      width: 380px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    .header {
+      padding: 13px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo { display: flex; align-items: center; gap: 8px; }
+
+    .logo-badge {
+      width: 28px; height: 28px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .logo-badge svg { display: block; }
+
+    .logo-name {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+    }
+
+    .credit {
+      font-size: 10px;
+      color: #3a3a3a;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .credit:hover { color: var(--muted); }
+
+    /* ── Body ───────────────────────────────── */
+    .body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+    /* ── Label ──────────────────────────────── */
+    .lbl {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    /* ── Select ─────────────────────────────── */
+    select {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: var(--r);
+      padding: 8px 30px 8px 10px;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      transition: border-color 0.15s;
+    }
+    select:focus { border-color: var(--accent); }
+    select:disabled { opacity: 0.4; cursor: default; }
+
+    /* ── Input ──────────────────────────────── */
+    input[type="text"] {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: var(--r);
+      padding: 8px 10px;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="text"]::placeholder { color: #3a3a3a; }
+    input[type="text"]:focus { border-color: var(--accent); }
+    input[type="text"]:read-only { color: var(--muted); cursor: default; }
+
+    /* ── Arrow separator ────────────────────── */
+    .convert-arrow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 2px 0;
+    }
+    .convert-arrow-line { flex: 1; height: 1px; background: var(--border); }
+    .convert-arrow-icon {
+      font-size: 11px;
+      color: #383838;
+      line-height: 1;
+    }
+
+    /* ── Mode toggle ────────────────────────── */
+    .mode-toggle {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 3px;
+      gap: 3px;
+      margin-bottom: 8px;
+    }
+    .mode-toggle label {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--muted);
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+    }
+    .mode-toggle label:has(input:checked) {
+      background: var(--accent);
+      color: #fff;
+    }
+    .mode-toggle label:has(input:disabled) { opacity: 0.35; cursor: default; }
+    .mode-toggle input[type="radio"] { display: none; }
+
+    /* ── Buttons ────────────────────────────── */
+    #startBtn {
+      width: 100%;
+      padding: 11px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--r);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.01em;
+      transition: background 0.15s;
+    }
+    #startBtn:hover:not(:disabled) { background: var(--accent-hover); }
+    #startBtn:disabled { background: #242424; color: #3d3d3d; cursor: not-allowed; }
+
+    #stopBtn {
+      width: 100%;
+      padding: 9px;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      font-size: 12px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      display: none;
+      margin-top: 6px;
+    }
+    #stopBtn:hover { border-color: #444; color: var(--text); }
+
+    /* ── Progress ───────────────────────────── */
+    #progress {
+      display: none;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .progress-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 7px;
+    }
+    #stepText { font-size: 11px; color: var(--muted); }
+    #barPct {
+      font-size: 11px;
+      color: #3d3d3d;
+      font-variant-numeric: tabular-nums;
+      min-width: 32px;
+      text-align: right;
+    }
+
+    .bar-bg {
+      height: 2px;
+      background: var(--dim);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .bar-fill {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      border-radius: 99px;
+      transition: width 0.25s ease;
+    }
+
+    /* ── Log ────────────────────────────────── */
+    #log {
+      max-height: 150px;
+      overflow-y: auto;
+      font-family: 'SF Mono', 'Fira Mono', 'Consolas', monospace;
+      font-size: 11px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 8px 10px;
+      line-height: 1.7;
+      color: #999;
+    }
+    #log::-webkit-scrollbar { width: 3px; }
+    #log::-webkit-scrollbar-track { background: transparent; }
+    #log::-webkit-scrollbar-thumb { background: #2e2e2e; border-radius: 99px; }
+    #log::-webkit-scrollbar-thumb:hover { background: #444; }
+
+    .ok   { color: var(--ok); }
+    .err  { color: var(--err); }
+    .info { color: var(--info); }
+
+    /* ── Playlist link ──────────────────────── */
+    #playlistLink { display: none; margin-top: 8px; }
+    #playlistLink a {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(229,57,53,0.25);
+      border-radius: var(--r);
+      color: #e57373;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 500;
+      transition: border-color 0.15s;
+    }
+    #playlistLink a:hover { border-color: var(--accent); }
+    #playlistLink a { color: #4ade80; }
+    #playlistLink a::after { content: '→'; font-size: 13px; color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="logo">
+      <div class="logo-badge">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 18V5l12-2v13"/>
+          <circle cx="6" cy="18" r="3" fill="white" stroke="none"/>
+          <circle cx="18" cy="16" r="3" fill="white" stroke="none"/>
+        </svg>
+      </div>
+      <span class="logo-name">Playlist Replug</span>
+    </div>
+    <a class="credit" href="https://github.com/mintheon" target="_blank">by mintheon</a>
+  </div>
+
+  <div class="body">
+
+    <div>
+      <label class="lbl">음악 플랫폼</label>
+      <select id="platformSelect">
+        <option value="melon">Melon</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="lbl">플레이리스트 URL</label>
+      <input type="text" id="melonUrl" placeholder="https://kko.to/xxxxx">
+    </div>
+
+    <div class="convert-arrow">
+      <div class="convert-arrow-line"></div>
+      <div class="convert-arrow-icon">▼ YouTube</div>
+      <div class="convert-arrow-line"></div>
+    </div>
+
+    <div>
+      <div class="mode-toggle">
+        <label><input type="radio" name="mode" value="new" checked><span>새로 만들기</span></label>
+        <label><input type="radio" name="mode" value="existing"><span>기존에 추가</span></label>
+      </div>
+      <div id="newSection">
+        <input type="text" id="playlistName" placeholder="플레이리스트 이름">
+      </div>
+      <div id="existingSection" style="display:none">
+        <input type="text" id="playlistUrl" placeholder="https://www.youtube.com/playlist?list=PLxxxx">
+      </div>
+    </div>
+
+    <button id="startBtn">▶  변환 시작</button>
+    <button id="stopBtn">■  중지</button>
+
+    <div id="progress">
+      <div class="progress-row">
+        <span id="stepText">준비 중...</span>
+        <span id="barPct">0%</span>
+      </div>
+      <div class="bar-bg"><div class="bar-fill" id="barFill"></div></div>
+      <div id="log"></div>
+      <div id="playlistLink"></div>
+    </div>
+
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

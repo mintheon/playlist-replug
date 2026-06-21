@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="110" fill="#22c55e"/>
+
+  <!-- left note head -->
+  <ellipse cx="163" cy="352" rx="56" ry="40" fill="white" transform="rotate(-15 163 352)"/>
+  <!-- right note head -->
+  <ellipse cx="312" cy="322" rx="56" ry="40" fill="white" transform="rotate(-15 312 322)"/>
+
+  <!-- left stem -->
+  <rect x="204" y="148" width="24" height="210" rx="12" fill="white"/>
+  <!-- right stem -->
+  <rect x="352" y="118" width="24" height="210" rx="12" fill="white"/>
+
+  <!-- beam connecting tops of both stems -->
+  <polygon points="204,148 376,115 376,154 204,187" fill="white"/>
+</svg>
