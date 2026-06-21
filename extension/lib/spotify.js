@@ -2,23 +2,30 @@ import { broadcastProgress } from './state.js';
 
 const PAGE_SIZE = 100;
 
-// Spotify 탭에 주입해서 액세스 토큰만 가져옴
-async function getToken() {
-  const controller = new AbortController();
-  const tid = setTimeout(() => controller.abort(), 10000);
+async function spotifyTokenFn() {
   try {
     const res = await fetch(
       'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
-      { credentials: 'include', signal: controller.signal }
+      { credentials: 'include' }
     );
-    clearTimeout(tid);
     const data = await res.json();
-    if (!data.accessToken || data.isAnonymous) throw new Error('Spotify에 로그인되어 있는지 확인하세요.');
-    return data.accessToken;
-  } catch (e) {
-    clearTimeout(tid);
-    throw new Error(e.name === 'AbortError' ? '토큰 요청 시간 초과 — Spotify에 로그인했는지 확인하세요.' : e.message);
-  }
+    if (!data.accessToken || data.isAnonymous) return { ok: false, error: 'Spotify에 로그인되어 있는지 확인하세요.' };
+    return { ok: true, data: data.accessToken };
+  } catch (e) { return { ok: false, error: e.message }; }
+}
+
+async function getToken(spotifyTabId) {
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('토큰 요청 시간 초과 — Spotify 탭을 확인하세요.')), 10000)
+  );
+  const exec = chrome.scripting.executeScript({
+    target: { tabId: spotifyTabId }, world: 'MAIN', func: spotifyTokenFn, args: [],
+  }).then(res => {
+    const r = res[0]?.result;
+    if (!r?.ok) throw new Error(r?.error || '토큰 획득 실패');
+    return r.data;
+  });
+  return Promise.race([exec, timeout]);
 }
 
 export async function fetchSpotifySongs(playlistUrl, spotifyTabId, shouldStop) {
@@ -26,7 +33,7 @@ export async function fetchSpotifySongs(playlistUrl, spotifyTabId, shouldStop) {
   if (!playlistId) throw new Error('올바른 Spotify 플레이리스트 URL을 입력해주세요.');
 
   broadcastProgress({ step: 'Spotify 토큰 가져오는 중...' });
-  const token   = await getToken();
+  const token   = await getToken(spotifyTabId);
   const headers = { Authorization: `Bearer ${token}` };
 
   broadcastProgress({ step: '플레이리스트 정보 로딩 중...' });
