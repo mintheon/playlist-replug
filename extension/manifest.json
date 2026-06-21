@@ -8,7 +8,10 @@
     "https://www.youtube.com/*",
     "https://www.melon.com/*",
     "https://m.app.melon.com/*",
-    "https://kko.to/*"
+    "https://kko.to/*",
+    "https://open.spotify.com/*",
+    "https://api.spotify.com/*",
+    "https://clienttoken.spotify.com/*"
   ],
   "background": {
     "service_worker": "background.js",

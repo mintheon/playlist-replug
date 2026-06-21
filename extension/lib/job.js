@@ -1,5 +1,6 @@
 import { broadcastProgress, flushState, initState } from './state.js';
 import { fetchMelonSongs } from './melon.js';
+import { fetchSpotifySongs } from './spotify.js';
 import { ytExec } from './youtube.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -14,14 +15,17 @@ export function requestStop() {
   _isJobRunning  = false;
 }
 
-export async function runJob({ melonUrl, mode, playlistName, playlistUrl, tabId }) {
+export async function runJob({ platform, sourceUrl, mode, playlistName, playlistUrl, tabId }) {
   _stopRequested = false;
   _isJobRunning  = true;
-  initState({ running: true, bar: 0, logs: [], melonUrl, mode, playlistName, playlistUrl });
+  initState({ running: true, bar: 0, logs: [], platform, sourceUrl, mode, playlistName, playlistUrl });
   await flushState();
 
-  const songs = await fetchMelonSongs(melonUrl, () => _stopRequested);
-  broadcastProgress({ log: `Melon에서 ${songs.length}개 곡 가져옴`, logType: 'info' });
+  const songs = platform === 'spotify'
+    ? await fetchSpotifySongs(sourceUrl, () => _stopRequested)
+    : await fetchMelonSongs(sourceUrl, () => _stopRequested);
+
+  broadcastProgress({ log: `${songs.length}개 곡 가져옴`, logType: 'info' });
 
   const playlistId = await resolvePlaylist(tabId, mode, playlistName, playlistUrl);
 
