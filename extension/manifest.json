@@ -3,7 +3,7 @@
   "name": "Replug",
   "version": "2.0",
   "description": "Replug — 음악 플레이리스트를 유튜브로 변환합니다",
-  "permissions": ["scripting", "tabs", "storage", "notifications"],
+  "permissions": ["scripting", "tabs", "storage", "notifications", "webRequest"],
   "host_permissions": [
     "https://www.youtube.com/*",
     "https://www.melon.com/*",

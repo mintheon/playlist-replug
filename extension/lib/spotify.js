@@ -2,52 +2,37 @@ import { broadcastProgress } from './state.js';
 
 const PAGE_SIZE = 100;
 
-function spotifyTokenFn() {
-  return new Promise(resolve => {
-    const origFetch = window.fetch;
-    let done = false;
+function getToken(spotifyTabId) {
+  return new Promise((resolve, reject) => {
+    const tid = setTimeout(() => {
+      chrome.webRequest.onBeforeSendHeaders.removeListener(listener);
+      reject(new Error('토큰 요청 시간 초과 — Spotify에서 음악을 재생하거나 탭을 조작해보세요.'));
+    }, 15000);
 
-    window.fetch = function(input, init, ...rest) {
-      const url = (typeof input === 'string' ? input : input?.url) || '';
-      if (!done && url.includes('api.spotify.com')) {
-        const auth = (init?.headers?.Authorization || init?.headers?.authorization) ?? '';
-        if (auth.startsWith('Bearer ')) {
-          done = true;
-          window.fetch = origFetch;
-          resolve({ ok: true, data: auth.slice(7) });
-        }
+    function listener(details) {
+      const auth = details.requestHeaders?.find(
+        h => h.name.toLowerCase() === 'authorization'
+      )?.value;
+      if (auth?.startsWith('Bearer ')) {
+        clearTimeout(tid);
+        chrome.webRequest.onBeforeSendHeaders.removeListener(listener);
+        resolve(auth.slice(7));
       }
-      return origFetch.call(this, input, init, ...rest);
-    };
+    }
 
-    setTimeout(() => {
-      if (!done) {
-        window.fetch = origFetch;
-        resolve({ ok: false, error: 'Spotify API 요청을 감지하지 못했습니다. Spotify에서 음악을 재생 중인지 확인하세요.' });
-      }
-    }, 10000);
+    chrome.webRequest.onBeforeSendHeaders.addListener(
+      listener,
+      { urls: ['https://api.spotify.com/*'], tabId: spotifyTabId },
+      ['requestHeaders']
+    );
   });
-}
-
-async function getToken(spotifyTabId) {
-  const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('토큰 요청 시간 초과 — Spotify 탭을 확인하세요.')), 10000)
-  );
-  const exec = chrome.scripting.executeScript({
-    target: { tabId: spotifyTabId }, world: 'MAIN', func: spotifyTokenFn, args: [],
-  }).then(res => {
-    const r = res[0]?.result;
-    if (!r?.ok) throw new Error(r?.error || '토큰 획득 실패');
-    return r.data;
-  });
-  return Promise.race([exec, timeout]);
 }
 
 export async function fetchSpotifySongs(playlistUrl, spotifyTabId, shouldStop) {
   const playlistId = playlistUrl.match(/playlist\/([A-Za-z0-9]+)/)?.[1];
   if (!playlistId) throw new Error('올바른 Spotify 플레이리스트 URL을 입력해주세요.');
 
-  broadcastProgress({ step: 'Spotify 토큰 가져오는 중...' });
+  broadcastProgress({ step: 'Spotify 토큰 가져오는 중... (Spotify 탭에서 음악을 재생하거나 탐색하세요)' });
   const token   = await getToken(spotifyTabId);
   const headers = { Authorization: `Bearer ${token}` };
 
