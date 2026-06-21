@@ -5,11 +5,19 @@ const PAGE_SIZE = 100;
 // Spotify 탭에 주입해서 액세스 토큰만 가져옴
 async function spotifyTokenFn() {
   try {
-    const res  = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', { credentials: 'include' });
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(
+      'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
+      { credentials: 'include', signal: controller.signal }
+    );
+    clearTimeout(tid);
     const data = await res.json();
     if (!data.accessToken || data.isAnonymous) return { ok: false, error: 'Spotify에 로그인되어 있는지 확인하세요.' };
     return { ok: true, data: data.accessToken };
-  } catch (e) { return { ok: false, error: e.message }; }
+  } catch (e) {
+    return { ok: false, error: e.name === 'AbortError' ? '토큰 요청 시간 초과 — Spotify 탭을 확인하세요.' : e.message };
+  }
 }
 
 async function getToken(spotifyTabId) {
