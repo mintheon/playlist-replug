@@ -2,16 +2,25 @@ import { broadcastProgress } from './state.js';
 
 const PAGE_SIZE = 100;
 
-async function spotifyTokenFn() {
+function spotifyTokenFn() {
+  function scan(storage) {
+    for (const key of Object.keys(storage)) {
+      try {
+        const val = JSON.parse(storage.getItem(key));
+        if (!val || typeof val !== 'object') continue;
+        if (val.accessToken && !val.isAnonymous) return val.accessToken;
+        for (const v of Object.values(val)) {
+          if (v && typeof v === 'object' && v.accessToken && !v.isAnonymous) return v.accessToken;
+        }
+      } catch {}
+    }
+    return null;
+  }
   try {
-    const res = await fetch(
-      'https://open.spotify.com/get_access_token?reason=transport&productType=web_player',
-      { credentials: 'include' }
-    );
-    const data = await res.json();
-    if (!data.accessToken || data.isAnonymous) return { ok: false, error: 'Spotify에 로그인되어 있는지 확인하세요.' };
-    return { ok: true, data: data.accessToken };
-  } catch (e) { return { ok: false, error: e.message }; }
+    const token = scan(localStorage) || scan(sessionStorage);
+    if (token) return { ok: true, data: token };
+  } catch {}
+  return { ok: false, error: 'Spotify 토큰을 찾지 못했습니다. open.spotify.com 탭에 로그인되어 있는지 확인하세요.' };
 }
 
 async function getToken(spotifyTabId) {
