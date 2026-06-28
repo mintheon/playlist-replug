@@ -85,15 +85,15 @@ async function ytApiFn(action, params) {
       const artistMatch = artistParts.some(a => vc.includes(a));
 
       if (!titleMatch && !hintMatch) return -Infinity; // 제목 무관 영상 제외
-      if (isArtist(v) && !artistMatch) return -Infinity; // 커버 아티스트 채널 제외
 
-      return (isTopic(v)    ? 1000 : 0)
-           + (isArtist(v)   ?  100 : 0)
-           + (isVerif(v)    ?   50 : 0)
-           + (hasMv(v)      ?  100 : 0)
-           + (titleMatch    ?  200 : 0)
-           + (hintMatch     ?   50 : 0)
-           + (artistMatch   ?  150 : 0);
+      return (isTopic(v)                   ? 1000 : 0)
+           + (isArtist(v)                  ?  100 : 0)
+           + (isVerif(v)                   ?   50 : 0)
+           + (hasMv(v)                     ?  100 : 0)
+           + (titleMatch                   ?  200 : 0)
+           + (hintMatch                    ?   50 : 0)
+           + (artistMatch                  ?  150 : 0)
+           + (isArtist(v) && !artistMatch  ? -200 : 0); // 커버 아티스트 패널티 (서브유닛 등 오탐 고려해 -Infinity 대신)
     };
 
     const best = items.reduce((b, v) => { const s = score(v); return s > b.s ? { v, s } : b; }, { v: null, s: -Infinity });
