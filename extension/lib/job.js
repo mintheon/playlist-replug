@@ -33,7 +33,8 @@ export async function runJob({ melonUrl, mode, playlistName, playlistUrl, tabId 
     broadcastProgress({ step: `검색 + 추가 중... ${i + 1} / ${songs.length}`, bar: (i + 1) / songs.length });
 
     try {
-      const video = await ytExec(tabId, ['search', { query: `${title} ${artist}` }]);
+      const corTitle = title.replace(/\s*[\(\[](feat|ft|featuring|with)[.\s][^\)\]]*/gi, '').trim();
+      const video = await ytExec(tabId, ['search', { query: `${corTitle} ${artist.split(',')[0].trim()}`, title, artist }]);
       if (!video) {
         broadcastProgress({ log: `✗ 검색 결과 없음: ${title} - ${artist}`, logType: 'err' });
         failed++;
@@ -51,8 +52,10 @@ export async function runJob({ melonUrl, mode, playlistName, playlistUrl, tabId 
   }
 
   _isJobRunning = false;
+  broadcastProgress({ log: '─────────────────────────────', logType: 'info' });
+  broadcastProgress({ log: `★ 변환 완료 — ${added}개 추가, ${failed}개 실패`, logType: 'info' });
   await broadcastProgress({ done: true, running: false, added, failed, playlistId });
-  await chrome.storage.local.remove(['jobState', 'inputState']);
+  // jobState는 유지 — 팝업 재오픈 시 로그 복원용. 다음 작업 시작 시 initState가 덮어씀
 }
 
 async function resolvePlaylist(tabId, mode, playlistName, playlistUrl) {

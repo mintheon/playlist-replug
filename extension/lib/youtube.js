@@ -32,7 +32,7 @@ async function ytApiFn(action, params) {
       body: JSON.stringify({ context, ...body }),
     }).then(r => r.json());
 
-    if (action === 'search') return pickVideo(await post('search', { query: params.query }));
+    if (action === 'search') return pickVideo(await post('search', { query: params.query }), params.title, params.artist);
 
     if (action === 'create') {
       const data = await post('playlist/create', { title: params.name, privacyStatus: 'PRIVATE' });
@@ -54,7 +54,7 @@ async function ytApiFn(action, params) {
   } catch (e) { return { ok: false, error: e.message }; }
 
   // 검색 결과에서 우선순위에 따라 영상 선택
-  function pickVideo(data) {
+  function pickVideo(data, origTitle, origArtist) {
     const items = data?.contents?.twoColumnSearchResultsRenderer?.primaryContents
       ?.sectionListRenderer?.contents
       ?.flatMap(c => c.itemSectionRenderer?.contents || [])
@@ -69,11 +69,29 @@ async function ytApiFn(action, params) {
     const hasMv    = v => mvRe.test(v.title?.runs?.[0]?.text || '');
     const hit      = (v, tag) => ({ ok: true, data: { id: v.videoId, tag } });
 
-    const topic = items.find(isTopic);                       if (topic) return hit(topic, 'Music');
-    const oacMv = items.find(v => isArtist(v) && hasMv(v)); if (oacMv) return hit(oacMv, '공식MV');
-    const verMv = items.find(v => isVerif(v)  && hasMv(v)); if (verMv) return hit(verMv, '공식MV');
-    const oac   = items.find(isArtist);                     if (oac)   return hit(oac,   '아티스트');
-    const mv    = items.find(hasMv);                         if (mv)    return hit(mv,    'MV');
-    return hit(items[0], '일반');
+    const norm      = s => (s || '').toLowerCase().replace(/[^\w가-힣]/g, '');
+    const vTitle    = v => norm(v.title?.runs?.[0]?.text || '');
+    // 피처링 정보 제거 후 핵심 제목만 사용
+    const featRe    = /\s*[\(\[](feat|ft|featuring|with)[.\s][^\)\]]*/gi;
+    const coreTitle = (origTitle || '').replace(featRe, '').trim();
+    const titleKey  = norm(coreTitle);
+    // 제목 완전 포함 (정규화 후)
+    const titleFit  = v => titleKey && vTitle(v).includes(titleKey);
+    // 키워드 힌트: 핵심 제목에서 단어 경계 기준 추출
+    const words     = coreTitle.toLowerCase().match(/[가-힣]{2,}|[a-z0-9]{4,}/g) || [];
+    const titleHint = v => words.some(w => vTitle(v).includes(w));
+
+    // 1차: 제목 완전 일치
+    const topic  = items.find(v => isTopic(v)  && titleFit(v));              if (topic)  return hit(topic,  'Music');
+    const oacMv  = items.find(v => isArtist(v) && hasMv(v) && titleFit(v)); if (oacMv)  return hit(oacMv,  '공식MV');
+    const verMv  = items.find(v => isVerif(v)  && hasMv(v) && titleFit(v)); if (verMv)  return hit(verMv,  '공식MV');
+    const oac    = items.find(v => isArtist(v) && titleFit(v));              if (oac)    return hit(oac,    '아티스트');
+    const any    = items.find(titleFit);                                      if (any)    return hit(any,    '일반');
+    // 2차: 키워드 힌트 폴백 (Melon 제목 ≠ YouTube 제목인 경우 대비)
+    const topicH = items.find(v => isTopic(v)  && titleHint(v));             if (topicH) return hit(topicH, 'Music');
+    const oacH   = items.find(v => isArtist(v) && titleHint(v));             if (oacH)   return hit(oacH,   '아티스트');
+    const anyH   = items.find(titleHint);                                     if (anyH)   return hit(anyH,   '일반');
+
+    return { ok: true, data: null };
   }
 }

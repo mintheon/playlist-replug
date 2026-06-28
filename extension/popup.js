@@ -150,8 +150,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       setJobActive(false);
     }
     if (msg.done) {
-      appendLog('─────────────────────────────', 'info');
-      appendLog(`★ 변환 완료 — ${msg.added}개 추가, ${msg.failed}개 실패`, 'info');
       handleJobDone(msg.playlistId);
     }
   });
@@ -179,6 +177,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await chrome.storage.local.set({ inputState: { platform: platformSelect.value, melonUrl, mode, playlistName, playlistUrl } });
 
+    await chrome.storage.local.remove('jobState');
     setJobActive(true);
     progressEl.style.display    = 'block';
     playlistLinkEl.style.display = 'none';
