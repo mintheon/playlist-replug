@@ -35,7 +35,7 @@ export async function runJob({ melonUrl, mode, playlistName, playlistUrl, tabId 
     try {
       const corTitle = title.replace(/\s*[\(\[](feat|ft|featuring|with)[.\s][^\)\]]*/gi, '').trim();
       const video = await ytExec(tabId, ['search', { query: `${corTitle} ${artist.split(',')[0].trim()}`, title, artist }]);
-      if (!video) {
+      if (!video?.id) {
         broadcastProgress({ log: `✗ 검색 결과 없음: ${title} - ${artist}`, logType: 'err' });
         failed++;
         continue;
