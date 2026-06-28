@@ -98,12 +98,15 @@ async function ytApiFn(action, params) {
     const verMv1   = items.find(v => isVerif(v) && hasMv(v) && titleFit(v) && artistFit(v)); if (verMv1) return hit(verMv1, '공식MV');
     const verMv2   = items.find(v => isVerif(v) && hasMv(v) && titleFit(v));                 if (verMv2) return hit(verMv2, '공식MV');
     const verMvH   = items.find(v => isVerif(v) && hasMv(v) && titleHint(v));                if (verMvH) return hit(verMvH, '공식MV');
-    // ── 4순위: 아티스트 채널 (MV 외) ──
-    const oac      = items.find(v => isArtist(v) && titleFit(v));                if (oac)      return hit(oac,      '아티스트');
-    const oacH     = items.find(v => isArtist(v) && titleHint(v));               if (oacH)     return hit(oacH,     '아티스트');
-    // ── 5순위: 일반 (제목 + 아티스트 검증 필수) ──
-    const any1     = items.find(v => titleFit(v)  && artistFit(v));              if (any1)     return hit(any1,     '일반');
-    const anyH     = items.find(v => titleHint(v) && artistFit(v));              if (anyH)     return hit(anyH,     '일반');
+    // ── 4순위: 아티스트 채널 (MV 외, 아티스트 검증 포함) ──
+    const oac      = items.find(v => isArtist(v) && titleFit(v)  && artistFit(v)); if (oac)   return hit(oac,  '아티스트');
+    const oacH     = items.find(v => isArtist(v) && titleHint(v) && artistFit(v)); if (oacH)  return hit(oacH, '아티스트');
+    // ── 5순위: 일반 (제목 + 아티스트 검증) ──
+    const any1     = items.find(v => titleFit(v)  && artistFit(v));  if (any1)  return hit(any1,  '일반');
+    const anyH     = items.find(v => titleHint(v) && artistFit(v));  if (anyH)  return hit(anyH,  '일반');
+    // ── 6순위: 최후 폴백 (아티스트 채널 제외 — 커버 아티스트 방지, 레이블 채널 허용) ──
+    const anyF     = items.find(v => !isArtist(v) && titleFit(v));   if (anyF)  return hit(anyF,  '일반');
+    const anyFH    = items.find(v => !isArtist(v) && titleHint(v));  if (anyFH) return hit(anyFH, '일반');
 
     return { ok: true, data: null };
   }
