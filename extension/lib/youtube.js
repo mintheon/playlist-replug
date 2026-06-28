@@ -69,23 +69,22 @@ async function ytApiFn(action, params) {
     const hasMv    = v => mvRe.test(v.title?.runs?.[0]?.text || '');
     const hit      = (v, tag) => ({ ok: true, data: { id: v.videoId, tag } });
 
-    const topic = items.find(isTopic);                       if (topic) return hit(topic, 'Music');
-    const oacMv = items.find(v => isArtist(v) && hasMv(v)); if (oacMv) return hit(oacMv, '공식MV');
-    const verMv = items.find(v => isVerif(v)  && hasMv(v)); if (verMv) return hit(verMv, '공식MV');
-    const oac   = items.find(isArtist);                     if (oac)   return hit(oac,   '아티스트');
-    const mv    = items.find(hasMv);                         if (mv)    return hit(mv,    'MV');
+    const norm      = s => (s || '').toLowerCase().replace(/[^\w가-힣]/g, '');
+    const vTitle    = v => norm(v.title?.runs?.[0]?.text || '');
+    const titleKey  = norm(origTitle || '');
+    // 제목 완전 포함 (정규화 후)
+    const titleFit  = v => titleKey && vTitle(v).includes(titleKey);
+    // 키워드 힌트: 한글 2자+, 영문 4자+ 단어 중 하나라도 포함 (Topic 채널 전용)
+    const words     = titleKey.match(/[가-힣]{2,}|[a-z0-9]{4,}/g) || [];
+    const titleHint = v => words.length > 0 && words.some(w => vTitle(v).includes(w));
 
-    // 위 조건 모두 불일치 시 제목/아티스트 포함 여부로 최소한의 검증
-    const norm        = s => (s || '').toLowerCase().replace(/[^\w가-힣]/g, '');
-    const vTitle      = v => norm(v.title?.runs?.[0]?.text || '');
-    const vArtist     = v => norm(v.ownerText?.runs?.[0]?.text || '');
-    const titleKey    = norm(origTitle || '');
-    const artistKey   = norm((origArtist || '').split(',')[0]);
-    const matchTitle  = v => titleKey  && vTitle(v).includes(titleKey);
-    const matchArtist = v => artistKey && vArtist(v).includes(artistKey);
-
-    const both   = items.find(v => matchTitle(v) && matchArtist(v)); if (both)  return hit(both,  '일반');
-    const byTitle = items.find(matchTitle);                           if (byTitle) return hit(byTitle, '일반');
+    // 모든 단계에서 제목 일치 필수
+    const topic  = items.find(v => isTopic(v)  && titleFit(v));              if (topic)  return hit(topic,  'Music');
+    const topicH = items.find(v => isTopic(v)  && titleHint(v));             if (topicH) return hit(topicH, 'Music');
+    const oacMv  = items.find(v => isArtist(v) && hasMv(v) && titleFit(v)); if (oacMv)  return hit(oacMv,  '공식MV');
+    const verMv  = items.find(v => isVerif(v)  && hasMv(v) && titleFit(v)); if (verMv)  return hit(verMv,  '공식MV');
+    const oac    = items.find(v => isArtist(v) && titleFit(v));              if (oac)    return hit(oac,    '아티스트');
+    const any    = items.find(titleFit);                                      if (any)    return hit(any,    '일반');
 
     return { ok: true, data: null };
   }
