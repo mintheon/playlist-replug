@@ -32,13 +32,15 @@ async function fetchAllPagesViaTab(plylstSeq) {
         const titleRe  = /class="btn btn_icon_detail"[^>]*>\s*<span class="odd_span">([^<]+)<\/span>/g;
         const artistRe = /id="artistName"[^>]*>[\s\S]*?<a [^>]*>([^<]+)<\/a>/g;
         const referer  = `https://www.melon.com/mymusic/playlist/mymusicplaylistview_inform.htm?plylstSeq=${plylstSeq}`;
+        const el       = document.createElement('textarea');
+        const decode   = s => { el.innerHTML = s; return el.value; };
         const songs    = [];
 
         for (let page = 1; ; page++) {
           const url  = `https://www.melon.com/mymusic/playlist/mymusicplaylistview_listPagingSong.htm?plylstSeq=${plylstSeq}&startIndex=${(page - 1) * pageSize + 1}&pageSize=${pageSize}`;
           const text = await fetch(url, { headers: { Referer: referer } }).then(r => r.text());
-          const titles  = [...text.matchAll(titleRe)].map(m => m[1].trim());
-          const artists = [...text.matchAll(artistRe)].map(m => m[1].trim());
+          const titles  = [...text.matchAll(titleRe)].map(m => decode(m[1].trim()));
+          const artists = [...text.matchAll(artistRe)].map(m => decode(m[1].trim()));
           const page_songs = titles.flatMap((title, i) => artists[i] ? [{ title, artist: artists[i] }] : []);
 
           if (!page_songs.length) break;
