@@ -51,6 +51,8 @@ export async function runJob({ melonUrl, mode, playlistName, playlistUrl, tabId 
   }
 
   _isJobRunning = false;
+  broadcastProgress({ log: '─────────────────────────────', logType: 'info' });
+  broadcastProgress({ log: `★ 변환 완료 — ${added}개 추가, ${failed}개 실패`, logType: 'info' });
   await broadcastProgress({ done: true, running: false, added, failed, playlistId });
   // jobState는 유지 — 팝업 재오픈 시 로그 복원용. 다음 작업 시작 시 initState가 덮어씀
 }
