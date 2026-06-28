@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const modeRadios = document.querySelectorAll('input[name="mode"]');
   const newSection      = document.getElementById('newSection');
   const existingSection = document.getElementById('existingSection');
+  const failOnlyCheck   = document.getElementById('failOnlyCheck');
 
   // ── UI 헬퍼 ───────────────────────────────────────────
   function setBar(val) {
@@ -91,10 +92,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     progressEl.style.display    = 'none';
     playlistLinkEl.style.display = 'none';
     logEl.innerHTML = '';
+    logEl.classList.remove('fail-only');
+    failOnlyCheck.checked = false;
     setBar(0);
     stepText.textContent = '';
     chrome.storage.local.remove('inputState');
   }
+
+  failOnlyCheck.addEventListener('change', () => {
+    logEl.classList.toggle('fail-only', failOnlyCheck.checked);
+  });
 
   // ── 입력값 자동 저장 ──────────────────────────────────
   function saveInputs() {
