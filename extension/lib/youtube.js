@@ -68,7 +68,6 @@ async function ytApiFn(action, params) {
     const isArtist = v => badge(v) === 'BADGE_STYLE_TYPE_VERIFIED_ARTIST';
     const isVerif  = v => badge(v).includes('VERIFIED');
     const hasMv    = v => mvRe.test(v.title?.runs?.[0]?.text || '');
-    const hit      = (v, tag) => ({ ok: true, data: { id: v.videoId, tag } });
 
     const norm  = s => (s || '').toLowerCase().replace(/[^\w가-힣]/g, '');
     const featRe = /\s*[\(\[](feat|ft|featuring|with)[.\s][^\)\]]*/gi;
@@ -99,11 +98,10 @@ async function ytApiFn(action, params) {
     };
 
     const scored = items.map(v => ({ v, s: score(v) })).filter(x => x.s > -Infinity).sort((a, b) => b.s - a.s);
-    const debug = scored.slice(0, 5).map(x => `${x.s}│${x.v.ownerText?.runs?.[0]?.text}│${x.v.title?.runs?.[0]?.text}`);
-    if (!scored.length) return { ok: true, data: { id: null, tag: null, debug } };
+    if (!scored.length) return { ok: true, data: null };
 
     const best = scored[0].v;
     const tag = isTopic(best) ? 'Music' : hasMv(best) ? '공식MV' : isArtist(best) ? '아티스트' : '일반';
-    return { ok: true, data: { id: best.videoId, tag, debug } };
+    return { ok: true, data: { id: best.videoId, tag } };
   }
 }
