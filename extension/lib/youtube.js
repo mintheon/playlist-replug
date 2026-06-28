@@ -32,7 +32,7 @@ async function ytApiFn(action, params) {
       body: JSON.stringify({ context, ...body }),
     }).then(r => r.json());
 
-    if (action === 'search') return pickVideo(await post('search', { query: params.query }));
+    if (action === 'search') return pickVideo(await post('search', { query: params.query }), params.title, params.artist);
 
     if (action === 'create') {
       const data = await post('playlist/create', { title: params.name, privacyStatus: 'PRIVATE' });
@@ -54,7 +54,7 @@ async function ytApiFn(action, params) {
   } catch (e) { return { ok: false, error: e.message }; }
 
   // 검색 결과에서 우선순위에 따라 영상 선택
-  function pickVideo(data) {
+  function pickVideo(data, origTitle, origArtist) {
     const items = data?.contents?.twoColumnSearchResultsRenderer?.primaryContents
       ?.sectionListRenderer?.contents
       ?.flatMap(c => c.itemSectionRenderer?.contents || [])
@@ -74,6 +74,19 @@ async function ytApiFn(action, params) {
     const verMv = items.find(v => isVerif(v)  && hasMv(v)); if (verMv) return hit(verMv, '공식MV');
     const oac   = items.find(isArtist);                     if (oac)   return hit(oac,   '아티스트');
     const mv    = items.find(hasMv);                         if (mv)    return hit(mv,    'MV');
-    return hit(items[0], '일반');
+
+    // 위 조건 모두 불일치 시 제목/아티스트 포함 여부로 최소한의 검증
+    const norm        = s => (s || '').toLowerCase().replace(/[^\w가-힣]/g, '');
+    const vTitle      = v => norm(v.title?.runs?.[0]?.text || '');
+    const vArtist     = v => norm(v.ownerText?.runs?.[0]?.text || '');
+    const titleKey    = norm(origTitle || '');
+    const artistKey   = norm((origArtist || '').split(',')[0]);
+    const matchTitle  = v => titleKey  && vTitle(v).includes(titleKey);
+    const matchArtist = v => artistKey && vArtist(v).includes(artistKey);
+
+    const both   = items.find(v => matchTitle(v) && matchArtist(v)); if (both)  return hit(both,  '일반');
+    const byTitle = items.find(matchTitle);                           if (byTitle) return hit(byTitle, '일반');
+
+    return { ok: true, data: null };
   }
 }

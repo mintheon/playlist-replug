@@ -33,7 +33,7 @@ export async function runJob({ melonUrl, mode, playlistName, playlistUrl, tabId 
     broadcastProgress({ step: `검색 + 추가 중... ${i + 1} / ${songs.length}`, bar: (i + 1) / songs.length });
 
     try {
-      const video = await ytExec(tabId, ['search', { query: `${title} ${artist}` }]);
+      const video = await ytExec(tabId, ['search', { query: `${title} ${artist}`, title, artist }]);
       if (!video) {
         broadcastProgress({ log: `✗ 검색 결과 없음: ${title} - ${artist}`, logType: 'err' });
         failed++;
