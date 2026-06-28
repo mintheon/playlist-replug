@@ -61,7 +61,7 @@ async function ytApiFn(action, params) {
       ?.filter(c => c.videoRenderer)?.map(c => c.videoRenderer) || [];
     if (!items.length) return { ok: true, data: null };
 
-    const mvRe     = /official\s*(mv|m\/v|video|music\s*video)|[\[(](mv|m\/v)[)\]]|뮤직\s*비디오|뮤비/i;
+    const mvRe     = /official\s*(mv|m\/v|video|music\s*video)|[\[(](mv|m\/v)[)\]]|\bm\/v\b|\bmv\b|뮤직\s*비디오|뮤비/i;
     const badge    = v => v.ownerBadges?.[0]?.metadataBadgeRenderer?.style || '';
     const isTopic  = v => v.ownerText?.runs?.[0]?.text?.endsWith('- Topic');
     const isArtist = v => badge(v) === 'BADGE_STYLE_TYPE_VERIFIED_ARTIST';
