@@ -98,10 +98,10 @@ async function ytApiFn(action, params) {
 
     const scored = items.map(v => ({ v, s: score(v) })).filter(x => x.s > -Infinity).sort((a, b) => b.s - a.s);
     const debug = scored.slice(0, 5).map(x => `${x.s}│${x.v.ownerText?.runs?.[0]?.text}│${x.v.title?.runs?.[0]?.text}`);
-    if (!scored.length) return { ok: true, data: null, debug };
+    if (!scored.length) return { ok: true, data: { id: null, tag: null, debug } };
 
     const best = scored[0].v;
     const tag = isTopic(best) ? 'Music' : hasMv(best) ? '공식MV' : isArtist(best) ? '아티스트' : '일반';
-    return { ok: true, data: { id: best.videoId, tag }, debug };
+    return { ok: true, data: { id: best.videoId, tag, debug } };
   }
 }
