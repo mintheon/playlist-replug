@@ -86,20 +86,23 @@ async function ytApiFn(action, params) {
       .split(/[,&\/\s·\-]+/).map(s => s.replace(/[^\w가-힣]/g, '')).filter(s => s.length >= 2);
     const artistFit = v => !artistParts.length || artistParts.some(a => vChan(v).includes(a));
 
-    // 1차: 제목 정확 일치
-    const topic   = items.find(v => isTopic(v)  && titleFit(v));                         if (topic)    return hit(topic,   'Music');
-    const oacMv   = items.find(v => isArtist(v) && hasMv(v) && titleFit(v));             if (oacMv)    return hit(oacMv,   '공식MV');
-    const verMv   = items.find(v => isVerif(v)  && hasMv(v) && titleFit(v));             if (verMv)    return hit(verMv,   '공식MV');
-    const oac     = items.find(v => isArtist(v) && titleFit(v));                          if (oac)      return hit(oac,     '아티스트');
-    const any     = items.find(v => titleFit(v) && artistFit(v));                         if (any)      return hit(any,     '일반');
-    // 2차: Topic 채널 신뢰 (영문 제목 대응 — YouTube 검색이 이미 제목+아티스트로 필터링)
-    const topicH  = items.find(v => isTopic(v)  && titleHint(v));                        if (topicH)   return hit(topicH,  'Music');
-    const topicAny = items.find(v => isTopic(v));                                         if (topicAny) return hit(topicAny,'Music');
-    // 3차: 키워드 힌트 + 아티스트 검증
-    const oacMvH  = items.find(v => isArtist(v) && hasMv(v) && titleHint(v));            if (oacMvH)   return hit(oacMvH,  '공식MV');
-    const verMvH  = items.find(v => isVerif(v)  && hasMv(v) && titleHint(v));            if (verMvH)   return hit(verMvH,  '공식MV');
-    const oacH    = items.find(v => isArtist(v) && titleHint(v));                         if (oacH)     return hit(oacH,    '아티스트');
-    const anyH    = items.find(v => titleHint(v) && artistFit(v));                        if (anyH)     return hit(anyH,    '일반');
+    // 1차: 제목 + 아티스트 정확 매칭
+    const topic1   = items.find(v => isTopic(v)  && titleFit(v) && artistFit(v));            if (topic1)   return hit(topic1,  'Music');
+    const oacMv    = items.find(v => isArtist(v) && hasMv(v)    && titleFit(v));              if (oacMv)    return hit(oacMv,   '공식MV');
+    const verMv1   = items.find(v => isVerif(v)  && hasMv(v)    && titleFit(v) && artistFit(v)); if (verMv1) return hit(verMv1, '공식MV');
+    const oac      = items.find(v => isArtist(v) && titleFit(v));                              if (oac)      return hit(oac,    '아티스트');
+    const any1     = items.find(v => titleFit(v) && artistFit(v));                             if (any1)     return hit(any1,   '일반');
+    // 2차: 제목만 (레이블 채널 등 채널명≠아티스트명 허용)
+    const topic2   = items.find(v => isTopic(v)  && titleFit(v));                             if (topic2)   return hit(topic2,  'Music');
+    const verMv2   = items.find(v => isVerif(v)  && hasMv(v)    && titleFit(v));              if (verMv2)   return hit(verMv2,  '공식MV');
+    // 3차: Topic 채널 키워드/신뢰 (영문 제목 대응)
+    const topicH   = items.find(v => isTopic(v)  && titleHint(v));                            if (topicH)   return hit(topicH,  'Music');
+    const topicAny = items.find(v => isTopic(v));                                              if (topicAny) return hit(topicAny,'Music');
+    // 4차: 키워드 힌트 + 아티스트
+    const oacMvH   = items.find(v => isArtist(v) && hasMv(v) && titleHint(v));                if (oacMvH)   return hit(oacMvH,  '공식MV');
+    const verMvH   = items.find(v => isVerif(v)  && hasMv(v) && titleHint(v));                if (verMvH)   return hit(verMvH,  '공식MV');
+    const oacH     = items.find(v => isArtist(v) && titleHint(v));                            if (oacH)     return hit(oacH,    '아티스트');
+    const anyH     = items.find(v => titleHint(v) && artistFit(v));                           if (anyH)     return hit(anyH,    '일반');
 
     return { ok: true, data: null };
   }
