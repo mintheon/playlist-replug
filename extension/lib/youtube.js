@@ -69,45 +69,37 @@ async function ytApiFn(action, params) {
     const hasMv    = v => mvRe.test(v.title?.runs?.[0]?.text || '');
     const hit      = (v, tag) => ({ ok: true, data: { id: v.videoId, tag } });
 
-    const norm      = s => (s || '').toLowerCase().replace(/[^\w가-힣]/g, '');
-    const vTitle    = v => norm(v.title?.runs?.[0]?.text || '');
-    const vChan     = v => norm(v.ownerText?.runs?.[0]?.text || '');
-    // 피처링 정보 제거 후 핵심 제목만 사용
-    const featRe    = /\s*[\(\[](feat|ft|featuring|with)[.\s][^\)\]]*/gi;
-    const coreTitle = (origTitle || '').replace(featRe, '').trim();
-    const titleKey  = norm(coreTitle);
-    // 제목 완전 포함 (정규화 후)
-    const titleFit  = v => titleKey && vTitle(v).includes(titleKey);
-    // 키워드 힌트: 핵심 제목에서 단어 경계 기준 추출
-    const words     = coreTitle.toLowerCase().match(/[가-힣]{2,}|[a-z0-9]{4,}/g) || [];
-    const titleHint = v => words.some(w => vTitle(v).includes(w));
-    // 아티스트 채널명 검증: 구분자로 나눈 파트 중 하나라도 채널명에 포함
+    const norm  = s => (s || '').toLowerCase().replace(/[^\w가-힣]/g, '');
+    const featRe = /\s*[\(\[](feat|ft|featuring|with)[.\s][^\)\]]*/gi;
+    const coreTitle   = (origTitle || '').replace(featRe, '').trim();
+    const titleKey    = norm(coreTitle);
+    const words       = coreTitle.toLowerCase().match(/[가-힣]{2,}|[a-z0-9]{4,}/g) || [];
     const artistParts = (origArtist || '').toLowerCase()
-      .split(/[,&\/\s·\-]+/).map(s => s.replace(/[^\w가-힣]/g, '')).filter(s => s.length >= 2);
-    const artistFit = v => !artistParts.length || artistParts.some(a => vChan(v).includes(a));
+      .split(/[,&/\s·-]+/).map(s => s.replace(/[^\w가-힣]/g, '')).filter(s => s.length >= 2);
 
-    // ── 1순위: Topic 채널 (정식 음원) ──
-    const topic1   = items.find(v => isTopic(v) && titleFit(v) && artistFit(v)); if (topic1)   return hit(topic1,   'Music');
-    const topic2   = items.find(v => isTopic(v) && titleFit(v));                 if (topic2)   return hit(topic2,   'Music');
-    const topicH   = items.find(v => isTopic(v) && titleHint(v));                if (topicH)   return hit(topicH,   'Music');
-    const topicAny = items.find(v => isTopic(v));                                 if (topicAny) return hit(topicAny, 'Music');
-    // ── 2순위: 아티스트 채널 MV ──
-    const oacMv    = items.find(v => isArtist(v) && hasMv(v) && titleFit(v));    if (oacMv)    return hit(oacMv,    '공식MV');
-    const oacMvH   = items.find(v => isArtist(v) && hasMv(v) && titleHint(v));   if (oacMvH)   return hit(oacMvH,   '공식MV');
-    // ── 3순위: 인증 채널 MV (레이블 등) ──
-    const verMv1   = items.find(v => isVerif(v) && hasMv(v) && titleFit(v) && artistFit(v)); if (verMv1) return hit(verMv1, '공식MV');
-    const verMv2   = items.find(v => isVerif(v) && hasMv(v) && titleFit(v));                 if (verMv2) return hit(verMv2, '공식MV');
-    const verMvH   = items.find(v => isVerif(v) && hasMv(v) && titleHint(v));                if (verMvH) return hit(verMvH, '공식MV');
-    // ── 4순위: 아티스트 채널 (MV 외, 아티스트 검증 포함) ──
-    const oac      = items.find(v => isArtist(v) && titleFit(v)  && artistFit(v)); if (oac)   return hit(oac,  '아티스트');
-    const oacH     = items.find(v => isArtist(v) && titleHint(v) && artistFit(v)); if (oacH)  return hit(oacH, '아티스트');
-    // ── 5순위: 일반 (제목 + 아티스트 검증) ──
-    const any1     = items.find(v => titleFit(v)  && artistFit(v));  if (any1)  return hit(any1,  '일반');
-    const anyH     = items.find(v => titleHint(v) && artistFit(v));  if (anyH)  return hit(anyH,  '일반');
-    // ── 6순위: 최후 폴백 (아티스트 채널 제외 — 커버 아티스트 방지, 레이블 채널 허용) ──
-    const anyF     = items.find(v => !isArtist(v) && titleFit(v));   if (anyF)  return hit(anyF,  '일반');
-    const anyFH    = items.find(v => !isArtist(v) && titleHint(v));  if (anyFH) return hit(anyFH, '일반');
+    const score = v => {
+      const vt = norm(v.title?.runs?.[0]?.text || '');
+      const vc = norm(v.ownerText?.runs?.[0]?.text || '');
+      const titleMatch  = titleKey && vt.includes(titleKey);
+      const hintMatch   = words.some(w => vt.includes(w));
+      const artistMatch = artistParts.some(a => vc.includes(a));
 
-    return { ok: true, data: null };
+      if (!titleMatch && !hintMatch) return -Infinity; // 제목 무관 영상 제외
+      if (isArtist(v) && !artistMatch) return -Infinity; // 커버 아티스트 채널 제외
+
+      return (isTopic(v)    ? 1000 : 0)
+           + (isArtist(v)   ?  100 : 0)
+           + (isVerif(v)    ?   50 : 0)
+           + (hasMv(v)      ?   30 : 0)
+           + (titleMatch    ?  200 : 0)
+           + (hintMatch     ?   50 : 0)
+           + (artistMatch   ?  150 : 0);
+    };
+
+    const best = items.reduce((b, v) => { const s = score(v); return s > b.s ? { v, s } : b; }, { v: null, s: -Infinity });
+    if (!best.v) return { ok: true, data: null };
+
+    const tag = isTopic(best.v) ? 'Music' : hasMv(best.v) ? '공식MV' : isArtist(best.v) ? '아티스트' : '일반';
+    return hit(best.v, tag);
   }
 }
