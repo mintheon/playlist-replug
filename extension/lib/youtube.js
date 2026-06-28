@@ -96,10 +96,12 @@ async function ytApiFn(action, params) {
            + (isArtist(v) && !artistMatch  ? -200 : 0); // 커버 아티스트 패널티 (서브유닛 등 오탐 고려해 -Infinity 대신)
     };
 
-    const best = items.reduce((b, v) => { const s = score(v); return s > b.s ? { v, s } : b; }, { v: null, s: -Infinity });
-    if (!best.v) return { ok: true, data: null };
+    const scored = items.map(v => ({ v, s: score(v) })).filter(x => x.s > -Infinity).sort((a, b) => b.s - a.s);
+    const debug = scored.slice(0, 5).map(x => `${x.s}│${x.v.ownerText?.runs?.[0]?.text}│${x.v.title?.runs?.[0]?.text}`);
+    if (!scored.length) return { ok: true, data: null, debug };
 
-    const tag = isTopic(best.v) ? 'Music' : hasMv(best.v) ? '공식MV' : isArtist(best.v) ? '아티스트' : '일반';
-    return hit(best.v, tag);
+    const best = scored[0].v;
+    const tag = isTopic(best) ? 'Music' : hasMv(best) ? '공식MV' : isArtist(best) ? '아티스트' : '일반';
+    return { ok: true, data: { id: best.videoId, tag }, debug };
   }
 }
