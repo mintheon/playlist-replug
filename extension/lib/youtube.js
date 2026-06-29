@@ -61,8 +61,9 @@ async function ytApiFn(action, params) {
       ?.filter(c => c.videoRenderer)?.map(c => c.videoRenderer) || [];
     if (!items.length) return { ok: true, data: null };
 
-    const mvRe     = /official\s*(mv|m\/v|video|music\s*video)|[\[(](mv|m\/v)[)\]]|\bm\/v\b|\bmv\b|뮤직\s*비디오|뮤비/i;
-    const liveRe   = /\blive\b|\bstage\b|라이브|콘서트|공연|음악방송|뮤직뱅크|인기가요|엠카운트다운|쇼챔피언|music.?core|inkigayo|m\.?countdown|show.?champion|showcase|컴백\s*무대|\[comeback/i;
+    const mvRe      = /official\s*(mv|m\/v|video|music\s*video)|[\[(](mv|m\/v)[)\]]|\bm\/v\b|\bmv\b|뮤직\s*비디오|뮤비/i;
+    const liveRe    = /\blive\b|\bstage\b|라이브|콘서트|공연|음악방송|뮤직뱅크|인기가요|엠카운트다운|쇼챔피언|music.?core|inkigayo|m\.?countdown|show.?champion|showcase|컴백\s*무대|\[comeback/i;
+    const karaokeRe = /노래방|karaoke|\bMR\b|반주|mr버전/i;
     const badge    = v => v.ownerBadges?.[0]?.metadataBadgeRenderer?.style || '';
     const isTopic  = v => v.ownerText?.runs?.[0]?.text?.endsWith('- Topic');
     const isArtist = v => badge(v) === 'BADGE_STYLE_TYPE_VERIFIED_ARTIST';
@@ -84,6 +85,9 @@ async function ytApiFn(action, params) {
       const hintMatch   = words.some(w => vt.includes(w));
       const artistMatch = artistParts.some(a => vc.includes(a));
 
+      const rawTitle = v.title?.runs?.[0]?.text || '';
+      const rawChan  = v.ownerText?.runs?.[0]?.text || '';
+      if (karaokeRe.test(rawTitle) || karaokeRe.test(rawChan)) return -Infinity; // 노래방 제외
       if (!titleMatch && !hintMatch) return -Infinity; // 제목 무관 영상 제외
 
       // 라틴↔CJK처럼 문자 체계가 달라 비교 불가능한 경우 artistWrong 패널티 면제
@@ -101,7 +105,7 @@ async function ytApiFn(action, params) {
            + (hintMatch                                          ?   50 : 0)
            + (artistMatch && isVerif(v)                          ?  150 : 0)
            + (isArtist(v) && !artistMatch && !hasMv(v) && !scriptIncompat ? -150 : 0)
-           + (liveRe.test(v.title?.runs?.[0]?.text || '')        ? -150 : 0);
+           + (liveRe.test(rawTitle)                               ? -150 : 0);
     };
 
     const scored = items.map(v => ({ v, s: score(v) })).filter(x => x.s > -Infinity).sort((a, b) => b.s - a.s);
