@@ -116,7 +116,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  platformSelect.addEventListener('change', saveInputs);
+  const placeholders = {
+    melon: 'https://kko.to/xxxxx',
+    genie: 'https://www.genie.co.kr/myMusic/myfolder?mxnm=xxxxx',
+  };
+  platformSelect.addEventListener('change', () => {
+    melonUrlInput.placeholder = placeholders[platformSelect.value] || '';
+    saveInputs();
+  });
   melonUrlInput.addEventListener('input', saveInputs);
   playlistNameInput.addEventListener('input', saveInputs);
   playlistUrlInput.addEventListener('input', saveInputs);
@@ -169,12 +176,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── 시작 버튼 ─────────────────────────────────────────
   startBtn.addEventListener('click', async () => {
-    const melonUrl    = melonUrlInput.value.trim();
+    const platform    = platformSelect.value;
+    const sourceUrl    = melonUrlInput.value.trim();
     const mode        = document.querySelector('input[name="mode"]:checked').value;
     const playlistName = playlistNameInput.value.trim();
     const playlistUrl  = playlistUrlInput.value.trim();
 
-    if (!melonUrl)                              { alert('멜론 URL을 입력해주세요.'); return; }
+    if (!sourceUrl)                              { alert('플레이리스트 URL을 입력해주세요.'); return; }
     if (mode === 'new'      && !playlistName)   { alert('플레이리스트 이름을 입력해주세요.'); return; }
     if (mode === 'existing' && !playlistUrl)    { alert('기존 플레이리스트 URL을 입력해주세요.'); return; }
 
@@ -182,7 +190,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tabId = tabs[0]?.id;
     if (!tabId) { alert('YouTube 탭을 열고 로그인 상태를 확인하세요.'); return; }
 
-    await chrome.storage.local.set({ inputState: { platform: platformSelect.value, melonUrl, mode, playlistName, playlistUrl } });
+    await chrome.storage.local.set({ inputState: { platform, melonUrl: sourceUrl, mode, playlistName, playlistUrl } });
 
     await chrome.storage.local.remove('jobState');
     setJobActive(true);
@@ -193,7 +201,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setBar(0);
 
     chrome.runtime.sendMessage(
-      { type: 'START_JOB', payload: { melonUrl, mode, playlistName, playlistUrl, tabId } },
+      { type: 'START_JOB', payload: { platform, sourceUrl, mode, playlistName, playlistUrl, tabId } },
       (resp) => {
         if (resp?.error) {
           alert(resp.error);
