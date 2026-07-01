@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Replug",
-  "version": "2.0",
+  "name": "Playlist Replug",
+  "version": "1.3.0",
   "description": "Replug — 음악 플레이리스트를 유튜브로 변환합니다",
   "permissions": ["scripting", "tabs", "storage", "notifications"],
   "host_permissions": [
