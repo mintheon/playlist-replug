@@ -60,7 +60,75 @@ async function ytApiFn(action, params) {
         ? { ok: true, data: true }
         : { ok: false, error: `API 응답: ${JSON.stringify(data).slice(0, 200)}` };
     }
+
+    if (action === 'playlist') {
+      let data = await post('browse', { browseId: 'VL' + params.playlistId });
+      if (data?.error) return { ok: false, error: `API 응답: ${JSON.stringify(data).slice(0, 200)}` };
+
+      const videos = [];
+      let rawItems = getInitialRaw(data);
+      for (let guard = 0; rawItems?.length && guard < 300; guard++) {
+        const { videos: pageVideos, continuation } = parseVideoItems(flattenItems(rawItems));
+        videos.push(...pageVideos);
+        if (!continuation) break;
+        data = await post('browse', { continuation }).catch(() => null);
+        if (!data || data.error) break;
+        rawItems = getContinuationRaw(data);
+      }
+      return { ok: true, data: videos };
+    }
   } catch (e) { return { ok: false, error: e.message }; }
+
+  // 재생목록 첫 페이지 원본 목록(itemSectionRenderer 등으로 감싸진 상태)
+  function getInitialRaw(data) {
+    const tab0 = data?.contents?.twoColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content;
+    return tab0?.sectionListRenderer?.contents || [];
+  }
+
+  // continuation 응답의 원본 목록 (initial과 동일하게 itemSectionRenderer로 다시 감싸져 옴)
+  function getContinuationRaw(data) {
+    const actions = data?.onResponseReceivedActions || [];
+    return actions.flatMap(a =>
+      a.appendContinuationItemsAction?.continuationItems
+      || a.reloadContinuationItemsCommand?.continuationItems
+      || []
+    );
+  }
+
+  // itemSectionRenderer/playlistVideoListRenderer 래퍼를 재귀적으로 풀어 실제 영상/continuation 항목만 남김
+  function flattenItems(rawList) {
+    const out = [];
+    for (const entry of rawList || []) {
+      if (entry.itemSectionRenderer) out.push(...flattenItems(entry.itemSectionRenderer.contents));
+      else if (entry.playlistVideoListRenderer) out.push(...flattenItems(entry.playlistVideoListRenderer.contents));
+      else out.push(entry);
+    }
+    return out;
+  }
+
+  function parseVideoItems(items) {
+    const videos = [];
+    let continuation = null;
+    for (const it of items) {
+      if (it.playlistVideoRenderer) {
+        const r = it.playlistVideoRenderer;
+        const title   = r.title?.runs?.map(x => x.text).join('') || r.title?.simpleText;
+        const channel = r.shortBylineText?.runs?.[0]?.text;
+        if (title && channel) videos.push({ title, channel });
+      } else if (it.lockupViewModel) {
+        const m = it.lockupViewModel.metadata?.lockupMetadataViewModel;
+        const title = m?.title?.content;
+        const rows  = m?.metadata?.contentMetadataViewModel?.metadataRows;
+        const channel = rows?.[0]?.metadataParts?.map(p => p.text?.content).join(' ');
+        if (title && channel) videos.push({ title, channel });
+      } else if (it.continuationItemRenderer) {
+        continuation = it.continuationItemRenderer.continuationEndpoint?.continuationCommand?.token || null;
+      } else if (it.continuationItemViewModel) {
+        continuation = it.continuationItemViewModel.continuationCommand?.innertubeCommand?.continuationCommand?.token || null;
+      }
+    }
+    return { videos, continuation };
+  }
 
   // 검색 결과에서 우선순위에 따라 영상 선택
   function pickVideo(data, origTitle, origArtist) {
