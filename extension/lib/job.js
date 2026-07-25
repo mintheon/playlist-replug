@@ -1,6 +1,7 @@
 import { broadcastProgress, flushState, initState } from './state.js';
 import { fetchMelonSongs } from './melon.js';
 import { fetchSpotifySongs } from './spotify.js';
+import { fetchGenieSongs } from './genie.js';
 import { ytExec } from './youtube.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -21,11 +22,17 @@ export async function runJob({ platform, sourceUrl, mode, playlistName, playlist
   initState({ running: true, bar: 0, logs: [], platform, sourceUrl, mode, playlistName, playlistUrl });
   await flushState();
 
-  const songs = platform === 'spotify'
-    ? await fetchSpotifySongs(sourceUrl, () => _stopRequested)
-    : await fetchMelonSongs(sourceUrl, () => _stopRequested);
-
-  broadcastProgress({ log: `${songs.length}개 곡 가져옴`, logType: 'info' });
+  let songs;
+  if (platform === 'genie') {
+    songs = await fetchGenieSongs(sourceUrl);
+    broadcastProgress({ log: `Genie에서 ${songs.length}개 곡 가져옴`, logType: 'info' });
+  } else if (platform === 'spotify') {
+    songs = await fetchSpotifySongs(sourceUrl, () => _stopRequested);
+    broadcastProgress({ log: `Spotify에서 ${songs.length}개 곡 가져옴`, logType: 'info' });
+  } else {
+    songs = await fetchMelonSongs(sourceUrl, () => _stopRequested);
+    broadcastProgress({ log: `Melon에서 ${songs.length}개 곡 가져옴`, logType: 'info' });
+  }
 
   const playlistId = await resolvePlaylist(tabId, mode, playlistName, playlistUrl);
 
@@ -37,8 +44,9 @@ export async function runJob({ platform, sourceUrl, mode, playlistName, playlist
     broadcastProgress({ step: `검색 + 추가 중... ${i + 1} / ${songs.length}`, bar: (i + 1) / songs.length });
 
     try {
-      const video = await ytExec(tabId, ['search', { query: `${title} ${artist}` }]);
-      if (!video) {
+      const corTitle = title.replace(/\s*[\(\[](feat|ft|featuring|with)[.\s][^\)\]]*/gi, '').trim();
+      const video = await ytExec(tabId, ['search', { query: `${corTitle} ${artist.split(',')[0].trim()}`, title, artist }]);
+      if (!video?.id) {
         broadcastProgress({ log: `✗ 검색 결과 없음: ${title} - ${artist}`, logType: 'err' });
         failed++;
         continue;
@@ -55,8 +63,10 @@ export async function runJob({ platform, sourceUrl, mode, playlistName, playlist
   }
 
   _isJobRunning = false;
+  broadcastProgress({ log: '─────────────────────────────', logType: 'info' });
+  broadcastProgress({ log: `★ 변환 완료 — ${added}개 추가, ${failed}개 실패`, logType: 'info' });
   await broadcastProgress({ done: true, running: false, added, failed, playlistId });
-  await chrome.storage.local.remove(['jobState', 'inputState']);
+  // jobState는 유지 — 팝업 재오픈 시 로그 복원용. 다음 작업 시작 시 initState가 덮어씀
 }
 
 async function resolvePlaylist(tabId, mode, playlistName, playlistUrl) {

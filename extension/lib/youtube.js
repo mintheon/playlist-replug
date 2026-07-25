@@ -32,7 +32,7 @@ async function ytApiFn(action, params) {
       body: JSON.stringify({ context, ...body }),
     }).then(r => r.json());
 
-    if (action === 'search') return pickVideo(await post('search', { query: params.query }));
+    if (action === 'search') return pickVideo(await post('search', { query: params.query }), params.title, params.artist);
 
     if (action === 'create') {
       const data = await post('playlist/create', { title: params.name, privacyStatus: 'PRIVATE' });
@@ -54,26 +54,82 @@ async function ytApiFn(action, params) {
   } catch (e) { return { ok: false, error: e.message }; }
 
   // 검색 결과에서 우선순위에 따라 영상 선택
-  function pickVideo(data) {
+  function pickVideo(data, origTitle, origArtist) {
     const items = data?.contents?.twoColumnSearchResultsRenderer?.primaryContents
       ?.sectionListRenderer?.contents
       ?.flatMap(c => c.itemSectionRenderer?.contents || [])
       ?.filter(c => c.videoRenderer)?.map(c => c.videoRenderer) || [];
     if (!items.length) return { ok: true, data: null };
 
-    const mvRe     = /official\s*(mv|m\/v|video|music\s*video)|\(mv\)|\(m\/v\)|뮤직\s*비디오|뮤비/i;
+    const mvRe      = /official\s*(mv|m\/v|video|music\s*video)|[\[(](mv|m\/v)[)\]]|\bm\/v\b|\bmv\b|music\s*video|뮤직\s*비디오|뮤비|공식\s*(mv|m\/v|뮤직\s*비디오|뮤비)|official\s*visualizer|\bpv\b|官方\s*(mv|完整版)/i;
+    const liveRe    = /\blive\b|\bstage\b|라이브|콘서트|공연|음악방송|뮤직뱅크|인기가요|엠카운트다운|쇼챔피언|music.?core|inkigayo|m\.?countdown|show.?champion|showcase|컴백\s*무대|\[comeback/i;
+    const karaokeRe = /노래방|가라오케|カラオケ|karaoke|\bMR\b|반주|mr\s*버전|mr\s*ver|\binstrumental\b|\binst\.?\b|off\s*vocal|sing\s*king|backing\s*track/i;
+    const excludeRe = /teaser|티저|trailer|예고편|reaction|리액션/i;
+    const altVerRe  = /\bremix\b|리믹스|sped\s*up|nightcore|8d\s*audio|slowed\s*(and|\+)?\s*reverb|\b1\s*hour\b|\bcover\b|커버|직캠|fancam|fan\s*cam/i;
     const badge    = v => v.ownerBadges?.[0]?.metadataBadgeRenderer?.style || '';
     const isTopic  = v => v.ownerText?.runs?.[0]?.text?.endsWith('- Topic');
     const isArtist = v => badge(v) === 'BADGE_STYLE_TYPE_VERIFIED_ARTIST';
     const isVerif  = v => badge(v).includes('VERIFIED');
     const hasMv    = v => mvRe.test(v.title?.runs?.[0]?.text || '');
-    const hit      = (v, tag) => ({ ok: true, data: { id: v.videoId, tag } });
 
-    const topic = items.find(isTopic);                       if (topic) return hit(topic, 'Music');
-    const oacMv = items.find(v => isArtist(v) && hasMv(v)); if (oacMv) return hit(oacMv, '공식MV');
-    const verMv = items.find(v => isVerif(v)  && hasMv(v)); if (verMv) return hit(verMv, '공식MV');
-    const oac   = items.find(isArtist);                     if (oac)   return hit(oac,   '아티스트');
-    const mv    = items.find(hasMv);                         if (mv)    return hit(mv,    'MV');
-    return hit(items[0], '일반');
+    const norm  = s => (s || '').toLowerCase().replace(/[^\w가-힣぀-鿿]/g, '');
+    const featRe = /\s*[\(\[](feat|ft|featuring|with)[.\s][^\)\]]*/gi;
+    const coreTitle   = (origTitle || '').replace(featRe, '').trim();
+    const titleKey    = norm(coreTitle);
+    const words       = coreTitle.toLowerCase().match(/[가-힣぀-鿿]{2,}|[a-z0-9]{4,}/g) || [];
+    const artistParts = (origArtist || '').toLowerCase()
+      .split(/[,&/\s·-]+/).map(s => s.replace(/[^\w가-힣぀-鿿]/g, '')).filter(s => s.length >= 2);
+
+    const score = v => {
+      const vt = norm(v.title?.runs?.[0]?.text || '');
+      const vc = norm(v.ownerText?.runs?.[0]?.text || '');
+      const titleMatch  = titleKey && vt.includes(titleKey);
+      const hintMatch   = words.length > 1
+        ? words.filter(w => vt.includes(w)).length >= Math.floor(words.length / 2) + 1 // 단어 과반 이상 겹쳐야 인정
+        : words.some(w => vt.includes(w));
+      const artistMatch = artistParts.some(a => vc.includes(a));
+
+      const rawTitle = v.title?.runs?.[0]?.text || '';
+      const rawChan  = v.ownerText?.runs?.[0]?.text || '';
+      if (karaokeRe.test(rawTitle) || karaokeRe.test(rawChan)) return -Infinity; // 노래방 제외
+      if (excludeRe.test(rawTitle) || excludeRe.test(rawChan)) return -Infinity; // 티저/리액션 제외
+      if (!titleMatch && !hintMatch) return -Infinity; // 제목 무관 영상 제외
+
+      // 라틴↔CJK처럼 문자 체계가 달라 비교 불가능한 경우 artistWrong 패널티 면제
+      const vcOnlyCJK   = vc && !/[a-z]/.test(vc);
+      const vcOnlyLatin = vc && !/[가-힣぀-鿿]/.test(vc);
+      const parOnlyCJK   = artistParts.length > 0 && !artistParts.some(a => /[a-z]/.test(a));
+      const parOnlyLatin = artistParts.length > 0 && !artistParts.some(a => /[가-힣぀-鿿]/.test(a));
+      const scriptIncompat = (vcOnlyCJK && parOnlyLatin) || (vcOnlyLatin && parOnlyCJK);
+
+      return (isTopic(v)                                          ? (artistMatch || scriptIncompat ? 1000 : 200) : 0)
+           + (isArtist(v)                                        ?  100 : 0)
+           + (isVerif(v)                                         ?   50 : 0)
+           + (hasMv(v)                                           ?  100 : 0)
+           + (titleMatch                                         ?  200 : 0)
+           + (hintMatch                                          ?   50 : 0)
+           + (artistMatch                                        ?   50 : 0)
+           + (artistMatch && isVerif(v)                          ?  150 : 0)
+           + (isArtist(v) && !artistMatch && !hasMv(v) && !scriptIncompat ? -150 : 0)
+           + (liveRe.test(rawTitle)                               ? -150 : 0)
+           + (altVerRe.test(rawTitle)                             ? -150 : 0);
+    };
+
+    const scored = items.map(v => ({ v, s: score(v) })).filter(x => x.s > -Infinity).sort((a, b) => b.s - a.s);
+
+    // 제목 매칭 전부 실패(크로스 스크립트 등) → 채널 품질만으로 폴백
+    if (!scored.length) {
+      const fallback = items
+        .map(v => ({ v, s: (isTopic(v) ? 1000 : 0) + (isArtist(v) ? 100 : 0) + (isVerif(v) ? 50 : 0) + (hasMv(v) ? 100 : 0) }))
+        .filter(x => x.s > 0).sort((a, b) => b.s - a.s);
+      if (!fallback.length) return { ok: true, data: null };
+      const fb = fallback[0].v;
+      const ftag = isTopic(fb) ? 'Music' : hasMv(fb) ? '공식MV' : isArtist(fb) ? '아티스트' : '일반';
+      return { ok: true, data: { id: fb.videoId, tag: ftag } };
+    }
+
+    const best = scored[0].v;
+    const tag = isTopic(best) ? 'Music' : hasMv(best) ? '공식MV' : isArtist(best) ? '아티스트' : '일반';
+    return { ok: true, data: { id: best.videoId, tag } };
   }
 }

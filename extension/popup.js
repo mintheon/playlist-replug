@@ -4,6 +4,11 @@ const PLATFORM_CONFIG = {
     tabUrl: null,
     tabMsg: null,
   },
+  genie: {
+    placeholder: 'https://www.genie.co.kr/myMusic/myfolder?mxnm=xxxxx',
+    tabUrl: null,
+    tabMsg: null,
+  },
   spotify: {
     placeholder: 'https://open.spotify.com/playlist/xxxxx',
     tabUrl: 'https://open.spotify.com/*',
@@ -28,6 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const modeRadios = document.querySelectorAll('input[name="mode"]');
   const newSection      = document.getElementById('newSection');
   const existingSection = document.getElementById('existingSection');
+  const failOnlyCheck   = document.getElementById('failOnlyCheck');
 
   // ── UI 헬퍼 ───────────────────────────────────────────
   function setBar(val) {
@@ -108,11 +114,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     setJobActive(false);
     progressEl.style.display     = 'none';
     playlistLinkEl.style.display = 'none';
-    logEl.innerHTML      = '';
+    logEl.innerHTML = '';
+    logEl.classList.remove('fail-only');
+    failOnlyCheck.checked = false;
     setBar(0);
     stepText.textContent = '';
     chrome.storage.local.remove('inputState');
   }
+
+  failOnlyCheck.addEventListener('change', () => {
+    logEl.classList.toggle('fail-only', failOnlyCheck.checked);
+  });
 
   // ── 입력값 자동 저장 ──────────────────────────────────
   function saveInputs() {
@@ -170,8 +182,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       setJobActive(false);
     }
     if (msg.done) {
-      appendLog('─────────────────────────────', 'info');
-      appendLog(`★ 변환 완료 — ${msg.added}개 추가, ${msg.failed}개 실패`, 'info');
       handleJobDone(msg.playlistId);
     }
   });
@@ -200,6 +210,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await chrome.storage.local.set({ inputState: { platform, sourceUrl, mode, playlistName, playlistUrl } });
 
+    await chrome.storage.local.remove('jobState');
     setJobActive(true);
     progressEl.style.display     = 'block';
     playlistLinkEl.style.display = 'none';
