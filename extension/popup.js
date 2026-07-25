@@ -13,6 +13,7 @@ const PLATFORM_CONFIG = {
     placeholder: 'https://open.spotify.com/playlist/xxxxx',
     tabUrl: 'https://open.spotify.com/*',
     tabMsg: 'Spotify 탭을 열고 로그인 상태를 확인하세요.',
+    note: '⚠ 변환 중 Spotify 탭이 열리고 곡 목록을 모두 가져오기 위해 자동으로 스크롤됩니다.',
   },
 };
 
@@ -34,6 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const newSection      = document.getElementById('newSection');
   const existingSection = document.getElementById('existingSection');
   const failOnlyCheck   = document.getElementById('failOnlyCheck');
+  const platformNote    = document.getElementById('platformNote');
 
   // ── UI 헬퍼 ───────────────────────────────────────────
   function setBar(val) {
@@ -64,6 +66,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   function applyPlatform(platform) {
     const cfg = PLATFORM_CONFIG[platform] || PLATFORM_CONFIG.melon;
     sourceUrlInput.placeholder = cfg.placeholder;
+    platformNote.textContent   = cfg.note || '';
+    platformNote.style.display = cfg.note ? 'block' : 'none';
   }
 
   function showPlaylistLink(playlistId) {

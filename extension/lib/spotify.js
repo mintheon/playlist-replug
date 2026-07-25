@@ -125,6 +125,7 @@ export async function fetchSpotifySongs(playlistUrl, shouldStop) {
   const playlistId = playlistUrl.match(/playlist\/([A-Za-z0-9]+)/)?.[1];
   if (!playlistId) throw new Error('올바른 Spotify 플레이리스트 URL을 입력해주세요.');
 
+  broadcastProgress({ log: 'ℹ Spotify 탭이 열리고 곡 목록을 모두 가져오기 위해 자동으로 스크롤됩니다. 잠시만 기다려주세요.', logType: 'info' });
   broadcastProgress({ step: 'Spotify 플레이리스트 로딩 중... (스크롤로 전체 곡 수집)' });
   const songs = await scrapeViaTab(`https://open.spotify.com/playlist/${playlistId}`);
 
