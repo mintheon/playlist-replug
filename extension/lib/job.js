@@ -1,5 +1,6 @@
 import { broadcastProgress, flushState, initState } from './state.js';
 import { fetchMelonSongs } from './melon.js';
+import { fetchSpotifySongs } from './spotify.js';
 import { fetchGenieSongs } from './genie.js';
 import { ytExec } from './youtube.js';
 
@@ -18,13 +19,16 @@ export function requestStop() {
 export async function runJob({ platform, sourceUrl, mode, playlistName, playlistUrl, tabId }) {
   _stopRequested = false;
   _isJobRunning  = true;
-  initState({ running: true, bar: 0, logs: [], sourceUrl, mode, playlistName, playlistUrl });
+  initState({ running: true, bar: 0, logs: [], platform, sourceUrl, mode, playlistName, playlistUrl });
   await flushState();
 
   let songs;
   if (platform === 'genie') {
     songs = await fetchGenieSongs(sourceUrl);
     broadcastProgress({ log: `Genie에서 ${songs.length}개 곡 가져옴`, logType: 'info' });
+  } else if (platform === 'spotify') {
+    songs = await fetchSpotifySongs(sourceUrl, () => _stopRequested);
+    broadcastProgress({ log: `Spotify에서 ${songs.length}개 곡 가져옴`, logType: 'info' });
   } else {
     songs = await fetchMelonSongs(sourceUrl, () => _stopRequested);
     broadcastProgress({ log: `Melon에서 ${songs.length}개 곡 가져옴`, logType: 'info' });

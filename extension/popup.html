@@ -97,6 +97,15 @@
     select:focus { border-color: var(--accent); }
     select:disabled { opacity: 0.4; cursor: default; }
 
+    /* ── Platform note ──────────────────────── */
+    #platformNote {
+      display: none;
+      margin-top: 6px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--info);
+    }
+
     /* ── Input ──────────────────────────────── */
     input[type="text"] {
       width: 100%;
@@ -332,12 +341,14 @@
       <select id="platformSelect">
         <option value="melon">Melon</option>
         <option value="genie">Genie</option>
+        <option value="spotify">Spotify</option>
       </select>
+      <div id="platformNote"></div>
     </div>
 
     <div>
       <label class="lbl">플레이리스트 URL</label>
-      <input type="text" id="melonUrl" placeholder="https://kko.to/xxxxx">
+      <input type="text" id="sourceUrl" placeholder="https://kko.to/xxxxx">
     </div>
 
     <div class="convert-arrow">

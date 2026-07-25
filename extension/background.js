@@ -1,4 +1,5 @@
 import { runJob, requestStop, isJobRunning } from './lib/job.js';
+import { broadcastProgress } from './lib/state.js';
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'START_JOB') {
@@ -7,9 +8,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return true;
     }
     runJob(msg.payload).catch(e => {
-      import('./lib/state.js').then(({ broadcastProgress }) =>
-        broadcastProgress({ error: true, message: e.message })
-      );
+      broadcastProgress({ error: true, message: e.message });
     });
     sendResponse({ started: true });
     return true;
