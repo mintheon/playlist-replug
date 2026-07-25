@@ -62,18 +62,28 @@ async function scrapeTracklist() {
 }
 
 async function scrapeViaTab(playlistUrl) {
+  // 백그라운드(비활성) 탭은 Chrome이 렌더링/타이머를 스로틀링해 가상 스크롤 목록이
+  // 끝까지 로드되지 않으므로, 탭을 활성화 상태로 열어야 함
   const spotifyTabs = await chrome.tabs.query({ url: 'https://open.spotify.com/*' });
-  let tabId     = spotifyTabs[0]?.id;
-  let tempTabId = null;
+  let tabId, tempTabId = null, previousActiveTabId = null;
 
-  if (tabId) {
-    const tab = await chrome.tabs.get(tabId);
+  if (spotifyTabs.length) {
+    const tab = spotifyTabs[0];
+    tabId = tab.id;
+    if (!tab.active) {
+      const [prev] = await chrome.tabs.query({ active: true, windowId: tab.windowId });
+      previousActiveTabId = prev?.id ?? null;
+    }
     if (!tab.url?.startsWith(playlistUrl)) {
-      await chrome.tabs.update(tabId, { url: playlistUrl });
+      await chrome.tabs.update(tabId, { url: playlistUrl, active: true });
       await waitForTabComplete(tabId);
+    } else if (!tab.active) {
+      await chrome.tabs.update(tabId, { active: true });
     }
   } else {
-    const tab = await chrome.tabs.create({ url: playlistUrl, active: false });
+    const [prev] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    previousActiveTabId = prev?.id ?? null;
+    const tab = await chrome.tabs.create({ url: playlistUrl, active: true });
     tempTabId = tab.id;
     tabId     = tab.id;
     await waitForTabComplete(tabId);
@@ -86,7 +96,11 @@ async function scrapeViaTab(playlistUrl) {
     if (result.error) throw new Error(result.error);
     return result.songs;
   } finally {
-    if (tempTabId !== null) chrome.tabs.remove(tempTabId).catch(() => {});
+    if (tempTabId !== null) {
+      chrome.tabs.remove(tempTabId).catch(() => {});
+    } else if (previousActiveTabId !== null) {
+      chrome.tabs.update(previousActiveTabId, { active: true }).catch(() => {});
+    }
   }
 }
 
