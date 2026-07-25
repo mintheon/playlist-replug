@@ -10,9 +10,7 @@
     "https://m.app.melon.com/*",
     "https://kko.to/*",
     "https://www.genie.co.kr/*",
-    "https://open.spotify.com/*",
-    "https://api.spotify.com/*",
-    "https://clienttoken.spotify.com/*"
+    "https://open.spotify.com/*"
   ],
   "background": {
     "service_worker": "background.js",
