@@ -1,7 +1,12 @@
 export async function ytExec(tabId, args) {
-  const res = await chrome.scripting.executeScript({
-    target: { tabId }, world: 'MAIN', func: ytApiFn, args,
-  });
+  let res;
+  try {
+    res = await chrome.scripting.executeScript({
+      target: { tabId }, world: 'MAIN', func: ytApiFn, args,
+    });
+  } catch (e) {
+    throw new Error(`YouTube 탭에 접근할 수 없습니다. 탭이 youtube.com 페이지에 그대로 있는지 확인 후 다시 시도해주세요. (${e.message})`);
+  }
   const r = res[0]?.result;
   if (!r)    throw new Error('executeScript 결과 없음');
   if (!r.ok) throw new Error(r.error || '알 수 없는 오류');
@@ -18,6 +23,10 @@ async function ytApiFn(action, params) {
     const sapisid = document.cookie.split(';').map(c => c.trim())
       .find(c => c.startsWith('__Secure-3PAPISID=') || c.startsWith('SAPISID='))
       ?.split('=').slice(1).join('=');
+
+    if (!sapisid && (action === 'create' || action === 'add')) {
+      return { ok: false, error: 'YouTube에 로그인되어 있지 않습니다. 탭에서 로그인 후 다시 시도해주세요.' };
+    }
 
     const headers = { 'Content-Type': 'application/json', 'X-Goog-AuthUser': '0' };
     if (sapisid) {

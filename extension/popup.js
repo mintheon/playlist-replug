@@ -214,8 +214,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (mode === 'existing' && !playlistUrl)  { alert('기존 플레이리스트 URL을 입력해주세요.'); return; }
 
     const ytTabs = await chrome.tabs.query({ url: 'https://www.youtube.com/*' });
-    const tabId  = ytTabs[0]?.id;
-    if (!tabId) { alert('YouTube 탭을 열고 로그인 상태를 확인하세요.'); return; }
+    let tabId = ytTabs[0]?.id;
+    if (!tabId) {
+      startBtn.disabled = true;
+      startBtn.textContent = 'YouTube 탭 여는 중...';
+      const tab = await chrome.tabs.create({ url: 'https://www.youtube.com/', active: false });
+      tabId = tab.id;
+      await new Promise(resolve => {
+        const onUpdated = (id, info) => {
+          if (id === tabId && info.status === 'complete') {
+            chrome.tabs.onUpdated.removeListener(onUpdated);
+            resolve();
+          }
+        };
+        chrome.tabs.onUpdated.addListener(onUpdated);
+      });
+      startBtn.disabled = false;
+      startBtn.textContent = '▶  변환 시작';
+    }
 
     await chrome.storage.local.set({ inputState: { platform, sourceUrl, mode, playlistName, playlistUrl } });
 
