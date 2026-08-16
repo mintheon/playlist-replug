@@ -22,6 +22,15 @@ export async function runJob({ platform, sourceUrl, mode, playlistName, playlist
   initState({ running: true, bar: 0, logs: [], platform, sourceUrl, mode, playlistName, playlistUrl });
   await flushState();
 
+  try {
+    await runToYoutube({ platform, sourceUrl, mode, playlistName, playlistUrl, tabId });
+  } catch (e) {
+    _isJobRunning = false;
+    throw e;
+  }
+}
+
+async function runToYoutube({ platform, sourceUrl, mode, playlistName, playlistUrl, tabId }) {
   let songs;
   if (platform === 'genie') {
     songs = await fetchGenieSongs(sourceUrl);
