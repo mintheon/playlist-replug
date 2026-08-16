@@ -2,6 +2,7 @@ import { broadcastProgress, flushState, initState } from './state.js';
 import { fetchMelonSongs } from './melon.js';
 import { fetchSpotifySongs } from './spotify.js';
 import { fetchGenieSongs } from './genie.js';
+import { fetchVibeSongs } from './vibe.js';
 import { ytExec } from './youtube.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -35,6 +36,9 @@ async function runToYoutube({ platform, sourceUrl, mode, playlistName, playlistU
   if (platform === 'genie') {
     songs = await fetchGenieSongs(sourceUrl);
     broadcastProgress({ log: `Genie에서 ${songs.length}개 곡 가져옴`, logType: 'info' });
+  } else if (platform === 'vibe') {
+    songs = await fetchVibeSongs(sourceUrl);
+    broadcastProgress({ log: `Naver Vibe에서 ${songs.length}개 곡 가져옴`, logType: 'info' });
   } else if (platform === 'spotify') {
     songs = await fetchSpotifySongs(sourceUrl, () => _stopRequested);
     broadcastProgress({ log: `Spotify에서 ${songs.length}개 곡 가져옴`, logType: 'info' });

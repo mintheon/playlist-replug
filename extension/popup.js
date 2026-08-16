@@ -9,6 +9,11 @@ const PLATFORM_CONFIG = {
     tabUrl: null,
     tabMsg: null,
   },
+  vibe: {
+    placeholder: 'https://vibe.naver.com/mylist/xxxxx',
+    tabUrl: null,
+    tabMsg: null,
+  },
   spotify: {
     placeholder: 'https://open.spotify.com/playlist/xxxxx',
     tabUrl: 'https://open.spotify.com/*',

@@ -10,6 +10,8 @@
     "https://m.app.melon.com/*",
     "https://kko.to/*",
     "https://www.genie.co.kr/*",
+    "https://vibe.naver.com/*",
+    "https://apis.naver.com/*",
     "https://open.spotify.com/*"
   ],
   "background": {
