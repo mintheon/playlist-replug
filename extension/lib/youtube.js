@@ -1,7 +1,12 @@
 export async function ytExec(tabId, args) {
-  const res = await chrome.scripting.executeScript({
-    target: { tabId }, world: 'MAIN', func: ytApiFn, args,
-  });
+  let res;
+  try {
+    res = await chrome.scripting.executeScript({
+      target: { tabId }, world: 'MAIN', func: ytApiFn, args,
+    });
+  } catch (e) {
+    throw new Error(`YouTube 탭에 접근할 수 없습니다. 탭이 youtube.com 페이지에 그대로 있는지 확인 후 다시 시도해주세요. (${e.message})`);
+  }
   const r = res[0]?.result;
   if (!r)    throw new Error('executeScript 결과 없음');
   if (!r.ok) throw new Error(r.error || '알 수 없는 오류');
@@ -18,6 +23,10 @@ async function ytApiFn(action, params) {
     const sapisid = document.cookie.split(';').map(c => c.trim())
       .find(c => c.startsWith('__Secure-3PAPISID=') || c.startsWith('SAPISID='))
       ?.split('=').slice(1).join('=');
+
+    if (!sapisid && (action === 'create' || action === 'add')) {
+      return { ok: false, error: 'YouTube에 로그인되어 있지 않습니다. 탭에서 로그인 후 다시 시도해주세요.' };
+    }
 
     const headers = { 'Content-Type': 'application/json', 'X-Goog-AuthUser': '0' };
     if (sapisid) {
@@ -62,9 +71,9 @@ async function ytApiFn(action, params) {
     if (!items.length) return { ok: true, data: null };
 
     const mvRe      = /official\s*(mv|m\/v|video|music\s*video)|[\[(](mv|m\/v)[)\]]|\bm\/v\b|\bmv\b|music\s*video|뮤직\s*비디오|뮤비|공식\s*(mv|m\/v|뮤직\s*비디오|뮤비)|official\s*visualizer|\bpv\b|官方\s*(mv|完整版)/i;
-    const liveRe    = /\blive\b|\bstage\b|라이브|콘서트|공연|음악방송|뮤직뱅크|인기가요|엠카운트다운|쇼챔피언|music.?core|inkigayo|m\.?countdown|show.?champion|showcase|컴백\s*무대|\[comeback/i;
+    const liveRe    = /\blive\b|\bstage\b|라이브|콘서트|공연|음악방송|뮤직뱅크|인기가요|엠카운트다운|쇼챔피언|music.?core|inkigayo|m\.?countdown|show.?champion|showcase|컴백\s*무대|\[comeback|dance\s*practice|choreography|안무\s*영상|연습\s*영상/i;
     const karaokeRe = /노래방|가라오케|カラオケ|karaoke|\bMR\b|반주|mr\s*버전|mr\s*ver|\binstrumental\b|\binst\.?\b|off\s*vocal|sing\s*king|backing\s*track/i;
-    const excludeRe = /teaser|티저|trailer|예고편|reaction|리액션/i;
+    const excludeRe = /teaser|티저|trailer|예고편|reaction|리액션|highlight\s*medley|하이라이트\s*메들리/i;
     const altVerRe  = /\bremix\b|리믹스|sped\s*up|nightcore|8d\s*audio|slowed\s*(and|\+)?\s*reverb|\b1\s*hour\b|\bcover\b|커버|직캠|fancam|fan\s*cam/i;
     const badge    = v => v.ownerBadges?.[0]?.metadataBadgeRenderer?.style || '';
     const isTopic  = v => v.ownerText?.runs?.[0]?.text?.endsWith('- Topic');

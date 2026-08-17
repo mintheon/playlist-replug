@@ -8,7 +8,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return true;
     }
     runJob(msg.payload).catch(e => {
-      broadcastProgress({ error: true, message: e.message });
+      broadcastProgress({ error: true, message: e.message, running: false });
     });
     sendResponse({ started: true });
     return true;

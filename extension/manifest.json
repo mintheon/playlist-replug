@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Playlist Replug",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Replug — 음악 플레이리스트를 유튜브로 변환합니다",
   "permissions": ["scripting", "tabs", "storage", "notifications"],
   "host_permissions": [
@@ -10,6 +10,8 @@
     "https://m.app.melon.com/*",
     "https://kko.to/*",
     "https://www.genie.co.kr/*",
+    "https://vibe.naver.com/*",
+    "https://apis.naver.com/*",
     "https://open.spotify.com/*"
   ],
   "background": {

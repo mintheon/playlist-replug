@@ -2,6 +2,7 @@ import { broadcastProgress, flushState, initState } from './state.js';
 import { fetchMelonSongs } from './melon.js';
 import { fetchSpotifySongs } from './spotify.js';
 import { fetchGenieSongs } from './genie.js';
+import { fetchVibeSongs } from './vibe.js';
 import { ytExec } from './youtube.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -22,10 +23,22 @@ export async function runJob({ platform, sourceUrl, mode, playlistName, playlist
   initState({ running: true, bar: 0, logs: [], platform, sourceUrl, mode, playlistName, playlistUrl });
   await flushState();
 
+  try {
+    await runToYoutube({ platform, sourceUrl, mode, playlistName, playlistUrl, tabId });
+  } catch (e) {
+    _isJobRunning = false;
+    throw e;
+  }
+}
+
+async function runToYoutube({ platform, sourceUrl, mode, playlistName, playlistUrl, tabId }) {
   let songs;
   if (platform === 'genie') {
     songs = await fetchGenieSongs(sourceUrl);
     broadcastProgress({ log: `Genie에서 ${songs.length}개 곡 가져옴`, logType: 'info' });
+  } else if (platform === 'vibe') {
+    songs = await fetchVibeSongs(sourceUrl);
+    broadcastProgress({ log: `Naver Vibe에서 ${songs.length}개 곡 가져옴`, logType: 'info' });
   } else if (platform === 'spotify') {
     songs = await fetchSpotifySongs(sourceUrl, () => _stopRequested);
     broadcastProgress({ log: `Spotify에서 ${songs.length}개 곡 가져옴`, logType: 'info' });
