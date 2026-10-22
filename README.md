@@ -87,6 +87,7 @@
 
    **Genie**
    - `https://www.genie.co.kr/myMusic/myfolder?mxnm=...`
+   - `https://www.genie.co.kr/myMusic/profileRecommandDetail?bgsq=...&axnm=...`
    - Genie에 로그인된 탭을 미리 열어두어야 합니다
 
    **Naver Vibe**

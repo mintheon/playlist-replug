@@ -1,7 +1,6 @@
 import { broadcastProgress } from './state.js';
 
-async function fetchSongsViaTab(mxnm) {
-  const genieUrl = `https://www.genie.co.kr/myMusic/myfolder?mxnm=${mxnm}`;
+async function fetchSongsViaTab(genieUrl) {
   const genieTabs = await chrome.tabs.query({ url: 'https://www.genie.co.kr/*' });
   let tabId    = genieTabs[0]?.id;
   let tempTabId = null;
@@ -53,12 +52,21 @@ async function fetchSongsViaTab(mxnm) {
 
 export async function fetchGenieSongs(inputUrl) {
   const mxnmMatch = inputUrl.match(/mxnm=(\d+)/);
-  if (!mxnmMatch) throw new Error('mxnm 파라미터를 찾지 못했습니다.');
+  const bgsqMatch = inputUrl.match(/bgsq=(\d+)/);
+  const axnmMatch = inputUrl.match(/axnm=(\d+)/);
 
-  const mxnm = mxnmMatch[1];
+  let genieUrl;
+  if (mxnmMatch) {
+    genieUrl = `https://www.genie.co.kr/myMusic/myfolder?mxnm=${mxnmMatch[1]}`;
+  } else if (bgsqMatch && axnmMatch) {
+    genieUrl = `https://www.genie.co.kr/myMusic/profileRecommandDetail?bgsq=${bgsqMatch[1]}&axnm=${axnmMatch[1]}`;
+  } else {
+    throw new Error('Genie URL에서 mxnm 또는 bgsq/axnm 파라미터를 찾지 못했습니다.');
+  }
+
   broadcastProgress({ step: 'Genie 플레이리스트 로딩 중...' });
 
-  const songs = await fetchSongsViaTab(mxnm);
+  const songs = await fetchSongsViaTab(genieUrl);
   if (!songs.length) throw new Error('곡 목록을 불러오지 못했습니다. Genie에 로그인되어 있는지 확인해주세요.');
 
   broadcastProgress({ log: `총 ${songs.length}곡 가져옴`, logType: 'info' });

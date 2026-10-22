@@ -5,7 +5,7 @@ const PLATFORM_CONFIG = {
     tabMsg: null,
   },
   genie: {
-    placeholder: 'https://www.genie.co.kr/myMusic/myfolder?mxnm=xxxxx',
+    placeholder: 'https://www.genie.co.kr/myMusic/myfolder?mxnm=xxxxx 또는 profileRecommandDetail?bgsq=...&axnm=...',
     tabUrl: null,
     tabMsg: null,
   },
