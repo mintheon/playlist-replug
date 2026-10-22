@@ -143,6 +143,8 @@ async function ytApiFn(action, params) {
     const karaokeRe = /노래방|가라오케|カラオケ|karaoke|\bMR\b|반주|mr\s*버전|mr\s*ver|\binstrumental\b|\binst\.?\b|off\s*vocal|sing\s*king|backing\s*track/i;
     const excludeRe = /teaser|티저|trailer|예고편|reaction|리액션|highlight\s*medley|하이라이트\s*메들리/i;
     const altVerRe  = /\bremix\b|리믹스|sped\s*up|nightcore|8d\s*audio|slowed\s*(and|\+)?\s*reverb|\b1\s*hour\b|\bcover\b|커버|직캠|fancam|fan\s*cam/i;
+    const trotRe    = /트로트|trot/i;
+    const variantRe = /\b(ver|version)\b\.?|버전|어쿠스틱|acoustic|piano|피아노|orchestra|오케스트라|메들리|medley|mashup|매쉬업|cover|커버/i;
     const badge    = v => v.ownerBadges?.[0]?.metadataBadgeRenderer?.style || '';
     const isTopic  = v => v.ownerText?.runs?.[0]?.text?.endsWith('- Topic');
     const isArtist = v => badge(v) === 'BADGE_STYLE_TYPE_VERIFIED_ARTIST';
@@ -172,6 +174,11 @@ async function ytApiFn(action, params) {
       if (excludeRe.test(rawTitle) || excludeRe.test(rawChan)) return -Infinity; // 티저/리액션 제외
       if (!titleMatch && !hintMatch) return -Infinity; // 제목 무관 영상 제외
 
+      // 원곡 제목/아티스트에 없는 변형 버전(트로트 등) 처리
+      const origText = `${origTitle || ''} ${origArtist || ''}`;
+      if (trotRe.test(rawTitle) && !trotRe.test(origText)) return -Infinity;
+      const variantPenalty = variantRe.test(rawTitle) && !variantRe.test(origText) ? -300 : 0;
+
       // 라틴↔CJK처럼 문자 체계가 달라 비교 불가능한 경우 artistWrong 패널티 면제
       const vcOnlyCJK   = vc && !/[a-z]/.test(vc);
       const vcOnlyLatin = vc && !/[가-힣぀-鿿]/.test(vc);
@@ -189,7 +196,9 @@ async function ytApiFn(action, params) {
            + (artistMatch && isVerif(v)                          ?  150 : 0)
            + (isArtist(v) && !artistMatch && !hasMv(v) && !scriptIncompat ? -150 : 0)
            + (liveRe.test(rawTitle)                               ? -150 : 0)
-           + (altVerRe.test(rawTitle)                             ? -150 : 0);
+           + (altVerRe.test(rawTitle)                             ? -150 : 0)
+           + variantPenalty
+           + (!artistMatch && !isTopic(v) && !isVerif(v) && !hasMv(v) && !scriptIncompat ? -100 : 0); // 무관한 일반 채널
     };
 
     const scored = items.map(v => ({ v, s: score(v) })).filter(x => x.s > -Infinity).sort((a, b) => b.s - a.s);
