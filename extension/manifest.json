@@ -3,8 +3,7 @@
   "name": "Playlist Replug",
   "version": "1.5.1",
   "description": "Replug — 음악 플레이리스트를 유튜브로 변환합니다",
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3GpxQiK6YppJk534TCx8vc63tXvXgGsYI5bBwyVHjASLqk4v1bEAkkVF/9FnSRwmgFu3jRMYb0r0VtaQn0zG0OX3LApxCewjeYtwrFyP+zV/VcSr7e9oyNHdYFvObgePbEsGm7/EA6HOD9PnmK7ITn7ZUnq2msWFT8Wcij7tlbjQRFdHepUVtmjpUezs7SV9aop9jPm9YdPlWVcfo87G6TC2r7dcDjzkU4gGZxDeid0zBpz2knKvZTflGgt3p7FsOVA4BzJZUSZpAkvgiY7CN5XilL14DO2tM4Ir06bqC5jbn1rCliNJTIDO9qVPY9Oia/GZh2ZxZSwbfCOx1SgpeQIDAQAB",
-  "permissions": ["scripting", "tabs", "storage", "notifications", "identity"],
+  "permissions": ["scripting", "tabs", "storage", "notifications"],
   "host_permissions": [
     "https://www.youtube.com/*",
     "https://www.melon.com/*",
@@ -13,9 +12,7 @@
     "https://www.genie.co.kr/*",
     "https://vibe.naver.com/*",
     "https://apis.naver.com/*",
-    "https://open.spotify.com/*",
-    "https://api.spotify.com/*",
-    "https://accounts.spotify.com/*"
+    "https://open.spotify.com/*"
   ],
   "background": {
     "service_worker": "background.js",
