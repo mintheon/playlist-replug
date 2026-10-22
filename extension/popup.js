@@ -41,6 +41,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const existingSection = document.getElementById('existingSection');
   const failOnlyCheck   = document.getElementById('failOnlyCheck');
   const platformNote    = document.getElementById('platformNote');
+  const directionRadios = document.querySelectorAll('input[name="direction"]');
+  const platformField   = document.getElementById('platformField');
+  const sourceUrlLabel  = document.getElementById('sourceUrlLabel');
+  const convertArrowIcon = document.getElementById('convertArrowIcon');
 
   // ── UI 헬퍼 ───────────────────────────────────────────
   function setBar(val) {
@@ -66,6 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     playlistNameInput.readOnly   = readonly;
     playlistUrlInput.readOnly    = readonly;
     modeRadios.forEach(r => { r.disabled = readonly; });
+    directionRadios.forEach(r => { r.disabled = readonly; });
   }
 
   function applyPlatform(platform) {
@@ -75,9 +80,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     platformNote.style.display = cfg.note ? 'block' : 'none';
   }
 
-  function showPlaylistLink(playlistId) {
+  function applyDirection(direction) {
+    if (direction === 'toSpotify') {
+      platformField.style.display = 'none';
+      sourceUrlLabel.textContent  = 'YouTube 플레이리스트 URL';
+      sourceUrlInput.placeholder  = 'https://www.youtube.com/playlist?list=PLxxxx';
+      convertArrowIcon.textContent = '▼ Spotify';
+      playlistUrlInput.placeholder = 'https://open.spotify.com/playlist/xxxxx';
+      platformNote.textContent   = '⚠ 최초 실행 시 Spotify 로그인 팝업이 뜹니다. 대상 플레이리스트가 자동으로 생성/추가됩니다.';
+      platformNote.style.display = 'block';
+    } else {
+      platformField.style.display = '';
+      sourceUrlLabel.textContent  = '플레이리스트 URL';
+      convertArrowIcon.textContent = '▼ YouTube';
+      playlistUrlInput.placeholder = 'https://www.youtube.com/playlist?list=PLxxxx';
+      applyPlatform(platformSelect.value);
+    }
+  }
+
+  function showPlaylistLink(playlistId, direction) {
     if (!playlistId) return;
-    playlistLinkEl.innerHTML = `<a href="https://www.youtube.com/playlist?list=${playlistId}" target="_blank">플레이리스트 열기</a>`;
+    const url = direction === 'toSpotify'
+      ? `https://open.spotify.com/playlist/${playlistId}`
+      : `https://www.youtube.com/playlist?list=${playlistId}`;
+    playlistLinkEl.innerHTML = `<a href="${url}" target="_blank">플레이리스트 열기</a>`;
     playlistLinkEl.style.display = 'block';
   }
 
@@ -108,9 +134,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     playlistUrlInput.value  = '';
   }
 
-  function handleJobDone(playlistId) {
+  function handleJobDone(playlistId, direction) {
     stepText.textContent = '완료!';
-    showPlaylistLink(playlistId);
+    showPlaylistLink(playlistId, direction);
     setJobActive(false);
     clearSourceInputs();
     chrome.storage.local.remove('inputState');
@@ -120,6 +146,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     clearSourceInputs();
     modeRadios[0].checked = true;
     setMode('new');
+    directionRadios[0].checked = true;
+    applyDirection('toYoutube');
     setJobActive(false);
     progressEl.style.display     = 'none';
     playlistLinkEl.style.display = 'none';
@@ -139,6 +167,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function saveInputs() {
     chrome.storage.local.set({
       inputState: {
+        direction:    document.querySelector('input[name="direction"]:checked').value,
         platform:     platformSelect.value,
         sourceUrl:    sourceUrlInput.value,
         playlistName: playlistNameInput.value,
@@ -153,11 +182,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   playlistNameInput.addEventListener('input', saveInputs);
   playlistUrlInput.addEventListener('input', saveInputs);
   modeRadios.forEach(r => r.addEventListener('change', () => { setMode(r.value); saveInputs(); }));
+  directionRadios.forEach(r => r.addEventListener('change', () => { applyDirection(r.value); saveInputs(); }));
 
   // ── 이전 상태 복원 ────────────────────────────────────
   const { jobState, inputState } = await chrome.storage.local.get(['jobState', 'inputState']);
 
   if (inputState) {
+    if (inputState.direction)    document.querySelector(`input[name="direction"][value="${inputState.direction}"]`).checked = true;
     if (inputState.platform)     platformSelect.value    = inputState.platform;
     if (inputState.sourceUrl)    sourceUrlInput.value    = inputState.sourceUrl;
     if (inputState.playlistName) playlistNameInput.value = inputState.playlistName;
@@ -167,7 +198,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.querySelector('input[name="mode"][value="existing"]').checked = true;
     }
   }
-  applyPlatform(platformSelect.value);
+  applyDirection(document.querySelector('input[name="direction"]:checked').value);
 
   if (jobState) {
     progressEl.style.display = 'block';
@@ -176,7 +207,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     restoreLogs(jobState.logs);
 
     if (jobState.running) setJobActive(true);
-    if (jobState.done)    handleJobDone(jobState.playlistId);
+    if (jobState.done)    handleJobDone(jobState.playlistId, jobState.direction);
   }
 
   // ── 실시간 진행 수신 ──────────────────────────────────
@@ -191,7 +222,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       setJobActive(false);
     }
     if (msg.done) {
-      handleJobDone(msg.playlistId);
+      handleJobDone(msg.playlistId, msg.direction);
     }
   });
 
@@ -203,6 +234,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── 시작 버튼 ─────────────────────────────────────────
   startBtn.addEventListener('click', async () => {
+    const direction    = document.querySelector('input[name="direction"]:checked').value;
     const platform     = platformSelect.value;
     const sourceUrl    = sourceUrlInput.value.trim();
     const mode         = document.querySelector('input[name="mode"]:checked').value;
@@ -233,7 +265,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       startBtn.textContent = '▶  변환 시작';
     }
 
-    await chrome.storage.local.set({ inputState: { platform, sourceUrl, mode, playlistName, playlistUrl } });
+    await chrome.storage.local.set({ inputState: { direction, platform, sourceUrl, mode, playlistName, playlistUrl } });
 
     await chrome.storage.local.remove('jobState');
     setJobActive(true);
@@ -244,7 +276,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setBar(0);
 
     chrome.runtime.sendMessage(
-      { type: 'START_JOB', payload: { platform, sourceUrl, mode, playlistName, playlistUrl, tabId } },
+      { type: 'START_JOB', payload: { direction, platform, sourceUrl, mode, playlistName, playlistUrl, tabId } },
       (resp) => {
         if (resp?.error) { alert(resp.error); setJobActive(false); }
       }
